@@ -2,8 +2,8 @@
 
 This repository is a collection of docs and examples to help implement zkSync into Yagna
 
-- [Yagna](github/yagna) is: An open platform and marketplace for distributed computations
-- [zkSync](zksync.io) is: scaling and privacy engine for Ethereum
+- [Yagna](https://github.com/golemfactory/yagna) is: An open platform and marketplace for distributed computations
+- [zkSync](https://zksync.io/) is: scaling and privacy engine for Ethereum
 
 ## Introduction
 
