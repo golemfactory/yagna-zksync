@@ -63,15 +63,15 @@ zkSync exists of the following components:
 
 ### Client library
 
-The (client library)[https://github.com/matter-labs/zksync/tree/master/js/zksync.js] is the gateway between yagna and the zkSync network.
+The [client library](https://github.com/matter-labs/zksync/tree/master/js/zksync.js) is the gateway between yagna and the zkSync network.
 It is currently written in JavaScript, but the Rust version is on the roadmap ( At GF or ML )
-The library providers easy to use methods to call the (Provider)[#provider].
+The library providers easy to use methods to call the [Provider](#provider).
 
 ### Contracts
 
-The (contracts)[https://github.com/matter-labs/zksync/blob/master/contracts/contracts] are used to produce the blocks and govern the network.
-The (Main contract)[] handles new blocks, deposits/withdraws and exists
-The (Gov contract)[] handles what ERC20 tokens are available and management of validators
+The [contracts](https://github.com/matter-labs/zksync/blob/master/contracts/contracts) are used to produce the blocks and govern the network.
+The [Main contract]() handles new blocks, deposits/withdraws and exists
+The [Gov contract]() handles what ERC20 tokens are available and management of validators
 
 ### Provider
 
