@@ -22,7 +22,7 @@ Compared to [other tools investigated](https://docs.google.com/document/d/1r54EC
 - Security like the main chain [src](https://zksync.io/faq/security.html)
 
 
-## Happy user flow ( without yagna )
+## Happy user flow ( no yagna )
 
 ### Provider
 
@@ -53,12 +53,37 @@ Compared to [other tools investigated](https://docs.google.com/document/d/1r54EC
     - transaction fees will be payed from the withdrawn funds
       - Example: withdraw 10$ in value, pay 0.05$ to the network, receive 9.95$ in ethereum wallet
 
+## Components
 
+zkSync exists of the following components:
+
+- Client library
+- Contracts
+- Provider
+
+### Client library
+
+The (client library)[https://github.com/matter-labs/zksync/tree/master/js/zksync.js] is the gateway between yagna and the zkSync network.
+It is currently written in JavaScript, but the Rust version is on the roadmap ( At GF or ML )
+The library providers easy to use methods to call the (Provider)[#provider].
+
+### Contracts
+
+The (contracts)[https://github.com/matter-labs/zksync/blob/master/contracts/contracts] are used to produce the blocks and govern the network.
+The (Main contract)[] handles new blocks, deposits/withdraws and exists
+The (Gov contract)[] handles what ERC20 tokens are available and management of validators
+
+### Provider
+
+The provider is a server that serves the API's for the clients to use.
+It also serves as a back-bone for the zkSync network: collecting transactions, creating and validation of blocks.
+In the best case scenario we could run these Providers on the Golem network. But for now we can start with ML's infrastructure and upgrade to GF infrastructure when required.
 
 
 ## Steps
 
 - [x] Describe happy user flow abstract and from yagna
+- [x] Describe `zkSync` components and their applicability to yagna
 - [ ] Write examples to use the javascript library like yagna would use it
 - [ ] Write rust client library for zkSync
 - [ ] Write examples to run a full local dev environment
