@@ -41,11 +41,11 @@ Compared to [other tools investigated](https://docs.google.com/document/d/1r54EC
 
 - Account unlocked -> check if signing key is set -> set signing key
 - Requestor
-  - Before allowance is created, funds need to be deposited in zkSync contract
-  - Make allowance required for posting demand, options for allowance:
-    - Can be a "virtual" safe only inside Yagna
-    - Can be a safe inside the zkSync contract
-    - Can be the funds deposited in zkSync
+  - Before allocation is created, funds need to be deposited in zkSync contract
+  - Make allocation required for posting demand, options for allowance:
+    - Can be a "virtual" safe only inside Yagna ( current )
+    - Can be a safe inside the zkSync contract ( nice to have )
+    - Can be the funds deposited in zkSync ( not feasable )
   - Send zkSync transaction on each debit note and invoice
 - Provider
   - Withdraw funds to any(?) mainnet ethereum wallet
