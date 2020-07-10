@@ -1,0 +1,15 @@
+{
+  "name": "zksync-javascript-poc",
+  "version": "1.0.0",
+  "description": "Basic reference scenario implementation for zksync in javascript",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "github.com:golemfactory/yagna-zksync.git"
+  },
+  "author": "Golem Factory",
+  "license": "ISC"
+}
