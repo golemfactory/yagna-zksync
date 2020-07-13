@@ -4,6 +4,7 @@
   "description": "Basic reference scenario implementation for zksync in javascript",
   "main": "index.js",
   "scripts": {
+    "basic": "node src/basic.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -11,5 +12,9 @@
     "url": "github.com:golemfactory/yagna-zksync.git"
   },
   "author": "Golem Factory",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "ethers": "^4.0.46",
+    "zksync": "^0.5.14"
+  }
 }

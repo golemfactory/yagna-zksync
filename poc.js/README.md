@@ -2,16 +2,21 @@
 
 ## pre-requisites
 
-Node stable ( node v10.20.1 (npm v6.14.4) )
+Node BETA
 ```
-nvm use stable
+nvm use lts/erbium
+```
+
+LTS node  ( node v10.20.1 (npm v6.14.4) ) also works, but need experimental features
+```
+NODE_OPTIONS='--experimental-modules' npm run <SCENARIO>
 ```
 
 ## dependencies
 
 ```
 cd poc.js/
-npm i
+yarn install
 ```
 
 ## Run scenario
@@ -28,8 +33,8 @@ npm run exodus
 
 ## TODO
 
-- [ ] install `zksync` library and save to `package.json`
-- [ ] copy scenario from zksync docs to `src/basic.js`
+- [x] install `zksync` library and save to `package.json`
+- [x] copy scenario from zksync docs to `src/basic.js`
 - [ ] add logging before and after each step
 - [ ] add `npm run basic` to call basic.js
 - [ ] adjust scenario to include NGNT contract
