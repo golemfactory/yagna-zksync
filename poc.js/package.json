@@ -16,6 +16,6 @@
   "dependencies": {
     "ethers": "^4.0.46",
     "winston": "^3.3.3",
-    "zksync": "^0.5.14"
+    "zksync": "^0.5.15"
   }
 }
