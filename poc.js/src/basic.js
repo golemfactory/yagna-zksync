@@ -186,7 +186,7 @@ async function main() {
 
     logger.info("Scenario completed, have a nice day!");
   } catch (e) {
-    logger.fatal("Scenario failed with error:", e);
+    logger.error("Scenario failed with error:", e);
   } finally {
     if (syncProvider) {
       await syncProvider.disconnect();
