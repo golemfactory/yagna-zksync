@@ -95,7 +95,7 @@ async function main() {
     const deposit = await requestorSyncWallet.depositToSyncFromEthereum({
       depositTo: requestorSyncWallet.address(),
       token: "ETH",
-      amount: ethers.utils.parseEther("0.0001"),
+      amount: ethers.utils.parseEther("0.002"),
     });
     logger.info("Done!");
 
@@ -103,14 +103,7 @@ async function main() {
     // Completes when a promise is issued to process the tx
     logger.info("Waiting for confirmation from zkSync operator...");
     const depositReceipt = await deposit.awaitReceipt();
-    logger.info("Confirmed");
-
-    // TODO
-    // Await verification
-    // Completes when the tx reaches finality on Ethereum
-    // logger.info("Waiting on tx finality on Ethereum...");
-    // const receipt = await deposit.awaitVerifyReceipt();
-    // logger.info("Confirmed!")
+    logger.info("Confirmed: " + depositReceipt);
 
     logger.info("Requestor's funds deposited on zkSync network");
 
@@ -153,17 +146,12 @@ async function main() {
     logger.info("Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH")));
     logger.info("Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH", "verified")));
 
-    logger.info("Making a simple transfer...")
-    const amount = zksync.utils.closestPackableTransactionAmount(
-      ethers.utils.parseEther("0.001"));
-    const fee = zksync.utils.closestPackableTransactionFee(
-      ethers.utils.parseEther("0.001"));
-
+    logger.info("Making a simple transfer...");
     const transfer = await requestorSyncWallet.syncTransfer({
       to: providerSyncWallet.address(),
       token: "ETH",
-      amount,
-      fee,
+      amount: zksync.utils.closestPackableTransactionAmount(
+        ethers.utils.parseEther("0.001")),
     });
     logger.info("Done!");
 
@@ -177,12 +165,20 @@ async function main() {
     logger.info("(After transfer) Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH")));
     logger.info("(After transfer) Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH", "verified")));
 
+    // withdraw funds to provider ETH wallet
+    logger.info("Withdrawing Provider's funds...");
 
-    // // withdraw funds to provider ETH wallet
-    // logger.info("Withdraw successfull");
+    const withdraw = await providerSyncWallet.withdrawFromSyncToEthereum({
+      ethAddress: providerWallet.address,
+      token: "ETH",
+      amount: ethers.utils.parseEther("0.001"),
+    });
 
-    // // OPTIONAL: Return funds to requestor
-    // logger.info("Funds returned to requestor");
+    logger.info("Done!");
+
+    logger.info("Verifying receipt...");
+    const withdrawalReceipt = await withdraw.awaitVerifyReceipt();
+    logger.info("Done: " + withdrawalReceipt);
 
     logger.info("Scenario completed, have a nice day!");
   } catch (e) {

@@ -47,12 +47,12 @@ npm run exodus
 - [x] copy scenario from zksync docs to `src/basic.js`
 - [x] add logging before and after each step
 - [x] add `npm run basic` to call basic.js
-- [ ] ETH flow
+- [x] ETH flow
   - [x] create Wallets
-  - [ ] top-up Wallets / faucet
+  - [x] top-up Wallets / faucet
   - [x] deposit to zksync
-  - [ ] transfer
-  - [ ] withdraw
+  - [x] transfer
+  - [x] withdraw
   - [ ] return funds (OPT)
 - [ ] adjust scenario to include NGNT
 - [ ] make readme better
