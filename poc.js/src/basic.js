@@ -14,7 +14,7 @@ const MNEMONIT_PROVIDER = "aim body ceiling coral usual brother payment coyote m
 
 const ETH_FAUCET_ADDRESS = "http://faucet.testnet.golem.network:4000/donate";
 const GNT_CONTRACT_ADDRESS = "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
-// const NGNT_FAUCET_CONTRACT_ADDRESS = "0x59259943616265A03d775145a2eC371732E2B06C";
+const FAUCET_CONTRACT_ADDRESS = "0x59259943616265A03d775145a2eC371732E2B06C";
 
 // The minimum ABI to get ERC20 Token balance
 const GNT_MIN_ABI = [
@@ -26,14 +26,18 @@ const GNT_MIN_ABI = [
     "outputs": [{ "name": "balance", "type": "uint256" }],
     "type": "function"
   },
-  // decimals
+];
+
+const FAUCET_MIN_ABI = [
   {
-    "constant": true,
+    "constant": false,
     "inputs": [],
-    "name": "decimals",
-    "outputs": [{ "name": "", "type": "uint8" }],
+    "name": "create",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
-  }
+  },
 ];
 
 
@@ -76,6 +80,14 @@ async function main() {
     const providerWallet = ethers.Wallet.fromMnemonic(MNEMONIT_PROVIDER).connect(ethersProvider);
     logger.debug("Provider address: " + providerWallet.address);
     const providerSyncWallet = await zksync.Wallet.fromEthSigner(providerWallet, syncProvider);
+
+    // Creates GNT contracts
+    gnt_contract = new ethers.Contract(GNT_CONTRACT_ADDRESS, GNT_MIN_ABI, ethersProvider);
+    logger.info("GNT contract: " + gnt_contract);
+
+    faucet_contract = new ethers.Contract(FAUCET_CONTRACT_ADDRESS, FAUCET_MIN_ABI, ethersProvider);
+    logger.info("Faucet contract: " + faucet_contract);
+
 
     // // OPTIONAL: Request faucet on requestor
     // // 1. check balance ( ETH-ETH, ETH-GNT, ZK-ETH, ZK-GNT)
