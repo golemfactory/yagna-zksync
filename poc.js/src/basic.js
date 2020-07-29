@@ -40,6 +40,7 @@ const FAUCET_MIN_ABI = [
   },
 ];
 
+const REQUESTOR_PRIV_KEY = '0x6fdf35e865b2472def9f8ddf692143b80b13895de695989396b215d3f60e303a';
 
 let web3 = null;
 let gnt_contract = null;
@@ -63,7 +64,7 @@ async function main() {
 
     // To interact with Sync network users need to know the endpoint of the operator node.
     logger.debug("Connecting to rinkeby zkSync-provider...");
-    const syncProvider = await zksync.getDefaultProvider("rinkeby");
+    const syncProvider = await zksync.getDefaultProvider("rinkeby", "HTTP");
 
     // Most operations require some read-only access to the Ethereum network. 
     // We use ethers library to interact with Ethereum.
@@ -73,7 +74,8 @@ async function main() {
     logger.info("Libraries loaded!");
 
     // Create 2 wallet, requestor and provider
-    const requestorWallet = ethers.Wallet.fromMnemonic(MNEMONIT_REQEUSTOR).connect(ethersProvider);
+    // const requestorWallet = ethers.Wallet.fromMnemonic(MNEMONIT_REQEUSTOR).connect(ethersProvider);
+    const requestorWallet = new ethers.Wallet(REQUESTOR_PRIV_KEY, ethersProvider);
     logger.debug("Requestor address: " + requestorWallet.address);
     const requestorSyncWallet = await zksync.Wallet.fromEthSigner(requestorWallet, syncProvider);
 
@@ -83,10 +85,7 @@ async function main() {
 
     // Creates GNT contracts
     gnt_contract = new ethers.Contract(GNT_CONTRACT_ADDRESS, GNT_MIN_ABI, ethersProvider);
-    logger.info("GNT contract: " + gnt_contract);
-
     faucet_contract = new ethers.Contract(FAUCET_CONTRACT_ADDRESS, FAUCET_MIN_ABI, ethersProvider);
-    logger.info("Faucet contract: " + faucet_contract);
 
 
     // // OPTIONAL: Request faucet on requestor
@@ -98,16 +97,16 @@ async function main() {
     await request_funds(requestorWallet);
     logger.info("Funds requested!")
 
-    logger.info("Before Requestor's funds: " + await get_eth_balance(requestorWallet.address));
-    logger.info("Before Provider's funds: " + await get_eth_balance(providerWallet.address));
+    logger.info("Before Requestor's funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
+    logger.info("Before Provider's funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
 
 
     logger.info("Depositing Requestor's funds on zkSync...")
     // Deposit assets on requestor
     const deposit = await requestorSyncWallet.depositToSyncFromEthereum({
       depositTo: requestorSyncWallet.address(),
-      token: "ETH",
-      amount: ethers.utils.parseEther("0.002"),
+      token: "GNT",
+      amount: ethers.utils.parseEther("1.0"),
     });
     logger.info("Done!");
 
@@ -119,8 +118,8 @@ async function main() {
 
     logger.info("Requestor's funds deposited on zkSync network");
 
-    logger.info("After deposit requestor funds: " + await get_eth_balance(requestorWallet.address));
-    logger.info("After provider funds: " + await get_eth_balance(providerWallet.address));
+    logger.info("After deposit requestor funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
+    logger.info("After provider funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
 
 
     // Unlock Requestor's account
@@ -137,60 +136,60 @@ async function main() {
     }
     logger.info("Requestor's account unlocked");
 
-    // Unlock Provider's account
-    logger.info("Unlocking Provider's account on zkSync...")
-    if (! await providerSyncWallet.isSigningKeySet()) {
-      if (await providerSyncWallet.getAccountId() == undefined) {
-        throw new Error("Unknwon account");
-      }
+    logger.info("Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT")) + " GNT");
+    logger.info("Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT", "verified")) + " GNT");
 
-      const changeProviderPubkey = await providerSyncWallet.setSigningKey();
+    logger.info("Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT")));
+    logger.info("Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT", "verified")));
 
-      // Wait until the tx is committed
-      await changeProviderPubkey.awaitReceipt();
-    }
-    logger.info("Provider's account unlocked");
+    // logger.info("Making a simple transfer...");
+    // const transfer = await requestorSyncWallet.syncTransfer({
+    //   to: providerSyncWallet.address(),
+    //   token: "ETH",
+    //   amount: zksync.utils.closestPackableTransactionAmount(
+    //     ethers.utils.parseEther("0.001")),
+    // });
+    // logger.info("Done!");
+
+    // logger.info("Waiting for confirmation on zkSync...");
+    // const transferReceipt = await transfer.awaitReceipt();
+    // logger.info("Confirmed!");
+
+    // logger.info("(After transfer) Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("ETH")));
+    // logger.info("(After transfer) Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("ETH", "verified")));
+
+    // logger.info("(After transfer) Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH")));
+    // logger.info("(After transfer) Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH", "verified")));
+
+    // // Unlock Provider's account
+    // logger.info("Unlocking Provider's account on zkSync...")
+    // if (! await providerSyncWallet.isSigningKeySet()) {
+    //   if (await providerSyncWallet.getAccountId() == undefined) {
+    //     throw new Error("Unknwon account");
+    //   }
+
+    //   const changeProviderPubkey = await providerSyncWallet.setSigningKey();
+
+    //   // Wait until the tx is committed
+    //   await changeProviderPubkey.awaitReceipt();
+    // }
+    // logger.info("Provider's account unlocked");
 
 
-    logger.info("Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("ETH")));
-    logger.info("Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("ETH", "verified")));
+    // // withdraw funds to provider ETH wallet
+    // logger.info("Withdrawing Provider's funds...");
 
-    logger.info("Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH")));
-    logger.info("Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH", "verified")));
+    // const withdraw = await providerSyncWallet.withdrawFromSyncToEthereum({
+    //   ethAddress: providerWallet.address,
+    //   token: "ETH",
+    //   amount: ethers.utils.parseEther("0.001"),
+    // });
 
-    logger.info("Making a simple transfer...");
-    const transfer = await requestorSyncWallet.syncTransfer({
-      to: providerSyncWallet.address(),
-      token: "ETH",
-      amount: zksync.utils.closestPackableTransactionAmount(
-        ethers.utils.parseEther("0.001")),
-    });
-    logger.info("Done!");
+    // logger.info("Done!");
 
-    logger.info("Waiting for confirmation on zkSync...");
-    const transferReceipt = await transfer.awaitReceipt();
-    logger.info("Confirmed!");
-
-    logger.info("(After transfer) Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("ETH")));
-    logger.info("(After transfer) Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("ETH", "verified")));
-
-    logger.info("(After transfer) Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH")));
-    logger.info("(After transfer) Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("ETH", "verified")));
-
-    // withdraw funds to provider ETH wallet
-    logger.info("Withdrawing Provider's funds...");
-
-    const withdraw = await providerSyncWallet.withdrawFromSyncToEthereum({
-      ethAddress: providerWallet.address,
-      token: "ETH",
-      amount: ethers.utils.parseEther("0.001"),
-    });
-
-    logger.info("Done!");
-
-    logger.info("Verifying receipt...");
-    const withdrawalReceipt = await withdraw.awaitVerifyReceipt();
-    logger.info("Done: " + withdrawalReceipt);
+    // logger.info("Verifying receipt...");
+    // const withdrawalReceipt = await withdraw.awaitVerifyReceipt();
+    // logger.info("Done: " + withdrawalReceipt);
 
     logger.info("Scenario completed, have a nice day!");
   } catch (e) {
@@ -204,6 +203,10 @@ async function main() {
 
 async function get_eth_balance(address) {
   return fromWei(await web3.eth.getBalance(address));
+}
+
+async function get_gnt_balance(address) {
+  return fromWei(await gnt_contract.balanceOf(address))
 }
 
 function fromWei(amount) {
