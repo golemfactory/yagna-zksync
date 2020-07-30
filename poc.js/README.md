@@ -56,7 +56,7 @@ npm run exodus
   - [ ] return funds (OPT)
 - [ ] adjust scenario to include NGNT
 - [ ] make readme better
-- [ ] add exodus script, move shared logic to `src/lib.js`
+- [x] add exodus script, ~~move shared logic to `src/lib.js`.~~
 
 ## Notes
 

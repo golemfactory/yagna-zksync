@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "basic": "node src/basic.js",
+    "exodus": "node src/basic.js exodus",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
