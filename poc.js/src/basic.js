@@ -10,13 +10,12 @@ const logger = createLogger({
   transports: [new transports.Console()],
 });
 
-const MNEMONIT_REQEUSTOR = "advice group neither noodle leader artwork toward similar ribbon under key program";
+// const MNEMONIT_REQEUSTOR = "advice group neither noodle leader artwork toward similar ribbon under key program";
 const MNEMONIT_PROVIDER = "aim body ceiling coral usual brother payment coyote manual helmet quick witness";
 
 const ETH_FAUCET_ADDRESS = "http://faucet.testnet.golem.network:4000/donate";
 const GNT_CONTRACT_ADDRESS = "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
-const ZKSYNC_CONTRACT_ADDRESS = "0x407a44c1a4c6b31faad06908f8e05f3709ade260";
-const FAUCET_CONTRACT_ADDRESS = "0x59259943616265A03d775145a2eC371732E2B06C";
+const ZKSYNC_CONTRACT_ADDRESS = "0x7ec7251192cdefe3ea352181ca0e6c2a08a411a5";
 
 const RINKEBY_CHAIN_ID = 4;
 
@@ -126,25 +125,25 @@ async function main() {
     logger.info("Before Provider's funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
 
 
-    // logger.info("Depositing Requestor's funds on zkSync...")
-    // // Deposit assets on requestor
-    // const deposit = await requestorSyncWallet.depositToSyncFromEthereum({
-    //   depositTo: requestorSyncWallet.address(),
-    //   token: "GNT",
-    //   amount: ethers.utils.parseEther("1.0"),
-    // });
-    // logger.info("Done!");
+    logger.info("Depositing Requestor's funds on zkSync...")
+    // Deposit assets on requestor
+    const deposit = await requestorSyncWallet.depositToSyncFromEthereum({
+      depositTo: requestorSyncWallet.address(),
+      token: "GNT",
+      amount: ethers.utils.parseEther("10.0"),
+    });
+    logger.info("Done!");
 
-    // // Await confirmation from the zkSync operator
-    // // Completes when a promise is issued to process the tx
-    // logger.info("Waiting for confirmation from zkSync operator...");
-    // const depositReceipt = await deposit.awaitReceipt();
-    // logger.info("Confirmed: " + depositReceipt);
+    // Await confirmation from the zkSync operator
+    // Completes when a promise is issued to process the tx
+    logger.info("Waiting for confirmation from zkSync operator...");
+    const depositReceipt = await deposit.awaitReceipt();
+    logger.info("Confirmed: " + depositReceipt);
 
-    // logger.info("Requestor's funds deposited on zkSync network");
+    logger.info("Requestor's funds deposited on zkSync network");
 
-    // logger.info("After deposit requestor funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
-    // logger.info("After provider funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
+    logger.info("After deposit requestor funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
+    logger.info("After provider funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
 
 
     // // Unlock Requestor's account
