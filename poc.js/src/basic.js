@@ -3,6 +3,7 @@ const http = require('http');
 const Web3 = require('web3');
 
 const { createLogger, format, transports } = require("winston");
+const { utils } = require("ethers");
 const logger = createLogger({
   level: "debug",
   format: format.simple(),
@@ -14,7 +15,10 @@ const MNEMONIT_PROVIDER = "aim body ceiling coral usual brother payment coyote m
 
 const ETH_FAUCET_ADDRESS = "http://faucet.testnet.golem.network:4000/donate";
 const GNT_CONTRACT_ADDRESS = "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
+const ZKSYNC_CONTRACT_ADDRESS = "0x407a44c1a4c6b31faad06908f8e05f3709ade260";
 const FAUCET_CONTRACT_ADDRESS = "0x59259943616265A03d775145a2eC371732E2B06C";
+
+const RINKEBY_CHAIN_ID = 4;
 
 // The minimum ABI to get ERC20 Token balance
 const GNT_MIN_ABI = [
@@ -26,14 +30,26 @@ const GNT_MIN_ABI = [
     "outputs": [{ "name": "balance", "type": "uint256" }],
     "type": "function"
   },
-];
-
-const FAUCET_MIN_ABI = [
+  // increaseAllowance
   {
     "constant": false,
-    "inputs": [],
-    "name": "create",
-    "outputs": [],
+    "inputs": [
+      {
+        "name": "spender",
+        "type": "address"
+      },
+      {
+        "name": "addedValue",
+        "type": "uint256"
+      }
+    ],
+    "name": "increaseAllowance",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
@@ -44,7 +60,6 @@ const REQUESTOR_PRIV_KEY = '0x6fdf35e865b2472def9f8ddf692143b80b13895de695989396
 
 let web3 = null;
 let gnt_contract = null;
-let faucet_contract = null;
 
 main();
 
@@ -56,6 +71,7 @@ async function main() {
   try {
     logger.info("Initializing web3...");
     web3 = new Web3(new Web3.providers.HttpProvider('http://1.geth.testnet.golem.network:55555'));
+    // Creates GNT contracts
     gnt_contract = new web3.eth.Contract(GNT_MIN_ABI, GNT_CONTRACT_ADDRESS);
     logger.info("web3 initialized!");
 
@@ -83,15 +99,24 @@ async function main() {
     logger.debug("Provider address: " + providerWallet.address);
     const providerSyncWallet = await zksync.Wallet.fromEthSigner(providerWallet, syncProvider);
 
-    // Creates GNT contracts
-    gnt_contract = new ethers.Contract(GNT_CONTRACT_ADDRESS, GNT_MIN_ABI, ethersProvider);
-    faucet_contract = new ethers.Contract(FAUCET_CONTRACT_ADDRESS, FAUCET_MIN_ABI, ethersProvider);
+    logger.info("Sending increaseAllowance...");
+    const callData = gnt_contract.methods.increaseAllowance(ZKSYNC_CONTRACT_ADDRESS, utils.parseEther("100.0")).encodeABI();
+    const transactionParameters = {
+      to: GNT_CONTRACT_ADDRESS,
+      value: '0x00',
+      data: callData,
+      chainId: RINKEBY_CHAIN_ID,
+    };
+    let allowanceTx = await requestorWallet.sendTransaction(transactionParameters);
+    logger.info("Waiting for confirmation...");
+    let allowanceReceipt = await allowanceTx.wait();
+    logger.info("Done!");
 
 
-    // // OPTIONAL: Request faucet on requestor
-    // // 1. check balance ( ETH-ETH, ETH-GNT, ZK-ETH, ZK-GNT)
-    // // 2. only faucet if total ETH or GNT is too low
-    // logger.info("Enough funds available for this scenario");
+    // // // OPTIONAL: Request faucet on requestor
+    // // // 1. check balance ( ETH-ETH, ETH-GNT, ZK-ETH, ZK-GNT)
+    // // // 2. only faucet if total ETH or GNT is too low
+    // // logger.info("Enough funds available for this scenario");
 
     logger.info("Requesting funds for the Requestor...")
     await request_funds(requestorWallet);
@@ -101,46 +126,46 @@ async function main() {
     logger.info("Before Provider's funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
 
 
-    logger.info("Depositing Requestor's funds on zkSync...")
-    // Deposit assets on requestor
-    const deposit = await requestorSyncWallet.depositToSyncFromEthereum({
-      depositTo: requestorSyncWallet.address(),
-      token: "GNT",
-      amount: ethers.utils.parseEther("1.0"),
-    });
-    logger.info("Done!");
+    // logger.info("Depositing Requestor's funds on zkSync...")
+    // // Deposit assets on requestor
+    // const deposit = await requestorSyncWallet.depositToSyncFromEthereum({
+    //   depositTo: requestorSyncWallet.address(),
+    //   token: "GNT",
+    //   amount: ethers.utils.parseEther("1.0"),
+    // });
+    // logger.info("Done!");
 
-    // Await confirmation from the zkSync operator
-    // Completes when a promise is issued to process the tx
-    logger.info("Waiting for confirmation from zkSync operator...");
-    const depositReceipt = await deposit.awaitReceipt();
-    logger.info("Confirmed: " + depositReceipt);
+    // // Await confirmation from the zkSync operator
+    // // Completes when a promise is issued to process the tx
+    // logger.info("Waiting for confirmation from zkSync operator...");
+    // const depositReceipt = await deposit.awaitReceipt();
+    // logger.info("Confirmed: " + depositReceipt);
 
-    logger.info("Requestor's funds deposited on zkSync network");
+    // logger.info("Requestor's funds deposited on zkSync network");
 
-    logger.info("After deposit requestor funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
-    logger.info("After provider funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
+    // logger.info("After deposit requestor funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
+    // logger.info("After provider funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
 
 
-    // Unlock Requestor's account
-    logger.info("Unlocking Requestor's account on zkSync...")
-    if (! await requestorSyncWallet.isSigningKeySet()) {
-      if (await requestorSyncWallet.getAccountId() == undefined) {
-        throw new Error("Unknwon account");
-      }
+    // // Unlock Requestor's account
+    // logger.info("Unlocking Requestor's account on zkSync...")
+    // if (! await requestorSyncWallet.isSigningKeySet()) {
+    //   if (await requestorSyncWallet.getAccountId() == undefined) {
+    //     throw new Error("Unknwon account");
+    //   }
 
-      const changeRequestorPubkey = await requestorSyncWallet.setSigningKey();
+    //   const changeRequestorPubkey = await requestorSyncWallet.setSigningKey();
 
-      // Wait until the tx is committed
-      await changeRequestorPubkey.awaitReceipt();
-    }
-    logger.info("Requestor's account unlocked");
+    //   // Wait until the tx is committed
+    //   await changeRequestorPubkey.awaitReceipt();
+    // }
+    // logger.info("Requestor's account unlocked");
 
-    logger.info("Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT")) + " GNT");
-    logger.info("Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT", "verified")) + " GNT");
+    // logger.info("Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT")) + " GNT");
+    // logger.info("Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT", "verified")) + " GNT");
 
-    logger.info("Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT")));
-    logger.info("Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT", "verified")));
+    // logger.info("Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT")));
+    // logger.info("Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT", "verified")));
 
     // logger.info("Making a simple transfer...");
     // const transfer = await requestorSyncWallet.syncTransfer({
@@ -206,7 +231,7 @@ async function get_eth_balance(address) {
 }
 
 async function get_gnt_balance(address) {
-  return fromWei(await gnt_contract.balanceOf(address))
+  return fromWei(await gnt_contract.methods.balanceOf(address).call());
 }
 
 function fromWei(amount) {
