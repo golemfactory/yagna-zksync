@@ -1,6 +1,7 @@
 const ethers = require("ethers");
 const fetch = require("node-fetch");
 const Web3 = require('web3');
+const stdio = require('stdio');
 
 const { createLogger, format, transports } = require("winston");
 const { utils } = require("ethers");
@@ -11,9 +12,6 @@ const logger = createLogger({
   format: format.simple(),
   transports: [new transports.Console()],
 });
-
-const MNEMONIT_REQEUSTOR = "advice group neither noodle leader artwork toward similar ribbon under key program";
-const MNEMONIT_PROVIDER = "aim body ceiling coral usual brother payment coyote manual helmet quick witness";
 
 const ETH_FAUCET_ADDRESS = "http://faucet.testnet.golem.network:4000/donate";
 const GNT_CONTRACT_ADDRESS = "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
@@ -70,11 +68,15 @@ const GNT_MIN_ABI = [
 
 const MAX_GNT_BALANCE = ethers.utils.parseEther("1000.0");
 const MIN_ETH_BALANCE = Web3.utils.fromWei("100000000000000", 'ether');
-// const REQUESTOR_PRIV_KEY = '0x6fdf35e865b2472def9f8ddf692143b80b13895de695989396b215d3f60e303a';
 
 let web3 = null;
 let gnt_contract = null;
 let faucet_contract = null;
+
+const ops = stdio.getopt({
+  'provider': { key: 'p', args: 1, required: false, description: "Provider's mnemonic", default: "" },
+  'requestor': { key: 'r', args: 1, required: false, description: "Requestor's mnemonic", default: "" },
+});
 
 main();
 
@@ -106,14 +108,18 @@ async function main() {
     logger.info("Libraries loaded!");
 
     // Create 2 wallet, requestor and provider
-    // const requestorWallet = ethers.Wallet.fromMnemonic(MNEMONIT_REQEUSTOR).connect(ethersProvider);
-    // const requestorWallet = new ethers.Wallet(REQUESTOR_PRIV_KEY, ethersProvider);
-    const requestorWallet = ethers.Wallet.createRandom().connect(ethersProvider);
-    logger.debug("Requestor address: " + requestorWallet.address);
+    const requestorWallet = ops.requestor && ops.requestor !== "" ?
+      ethers.Wallet.fromMnemonic(ops.requestor).connect(ethersProvider)
+      : ethers.Wallet.createRandom().connect(ethersProvider);
+    logger.info("Requestor address: " + requestorWallet.address);
+    logger.info("Requestor mnemonic: " + requestorWallet.mnemonic)
     const requestorSyncWallet = await zksync.Wallet.fromEthSigner(requestorWallet, syncProvider);
 
-    const providerWallet = ethers.Wallet.fromMnemonic(MNEMONIT_PROVIDER).connect(ethersProvider);
-    logger.debug("Provider address: " + providerWallet.address);
+    const providerWallet = ops.provider && ops.provider !== "" ?
+      ethers.Wallet.fromMnemonic(ops.provider).connect(ethersProvider)
+      : ethers.Wallet.createRandom().connect(ethersProvider);
+    logger.info("Provider address: " + providerWallet.address);
+    logger.info("Provider mnemonic: " + providerWallet.mnemonic);
     const providerSyncWallet = await zksync.Wallet.fromEthSigner(providerWallet, syncProvider);
 
     logger.info("Requesting funds for the Requestor...")
@@ -130,7 +136,7 @@ async function main() {
     const deposit = await requestorSyncWallet.depositToSyncFromEthereum({
       depositTo: requestorSyncWallet.address(),
       token: "GNT",
-      amount: ethers.utils.parseEther("3.0"),
+      amount: ethers.utils.parseEther("10.0"),
     });
     logger.info("Done!");
 
@@ -171,7 +177,7 @@ async function main() {
       to: providerSyncWallet.address(),
       token: "GNT",
       amount: zksync.utils.closestPackableTransactionAmount(
-        ethers.utils.parseEther("2.0")),
+        ethers.utils.parseEther("6.0")),
     });
     logger.info("Done!");
 
@@ -206,7 +212,7 @@ async function main() {
     const withdraw = await providerSyncWallet.withdrawFromSyncToEthereum({
       ethAddress: providerWallet.address,
       token: "GNT",
-      amount: ethers.utils.parseEther("1.5"),
+      amount: ethers.utils.parseEther("2"),
     });
 
     logger.info("Done!");
@@ -266,7 +272,7 @@ async function request_eth(wallet) {
   }
 
   logger.info("Waiting for confirmations...");
-  await sleep(20000);
+  await sleep_with_progress_bar(20);
 
   if (await get_eth_balance(wallet.address) < MIN_ETH_BALANCE) {
     throwError("Cannot request ETH!")
@@ -312,4 +318,13 @@ async function increaseAllowance(wallet) {
   let allowanceReceipt = await allowanceTx.wait();
   logger.info("Done!");
 
+}
+
+async function sleep_with_progress_bar(seconds) {
+  const pbar = new stdio.ProgressBar(seconds);
+  var i = setInterval(() => pbar.tick(), 1000);
+  pbar.onFinish(() => {
+    clearInterval(i);
+  });
+  await sleep(seconds * 1000);
 }

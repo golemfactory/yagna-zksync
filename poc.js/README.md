@@ -31,13 +31,19 @@ yarn install
 
 for "happy path":
 
-```
+```console
 npm run basic
+```
+
+or create wallets from mnemonic:
+
+```console
+npm run basic -- -r <requestor_mnemonic> -p <provider_mnemonic>
 ```
 
 for exodus path:
 
-```
+```console
 npm run exodus
 ```
 
