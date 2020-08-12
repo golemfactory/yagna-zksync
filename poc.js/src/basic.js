@@ -1,23 +1,36 @@
 const ethers = require("ethers");
-const http = require('http');
+const fetch = require("node-fetch");
 const Web3 = require('web3');
 
 const { createLogger, format, transports } = require("winston");
 const { utils } = require("ethers");
+const { throwError } = require("ethers/errors");
+const { sleep } = require("zksync/build/utils");
 const logger = createLogger({
   level: "debug",
   format: format.simple(),
   transports: [new transports.Console()],
 });
 
-// const MNEMONIT_REQEUSTOR = "advice group neither noodle leader artwork toward similar ribbon under key program";
+const MNEMONIT_REQEUSTOR = "advice group neither noodle leader artwork toward similar ribbon under key program";
 const MNEMONIT_PROVIDER = "aim body ceiling coral usual brother payment coyote manual helmet quick witness";
 
 const ETH_FAUCET_ADDRESS = "http://faucet.testnet.golem.network:4000/donate";
 const GNT_CONTRACT_ADDRESS = "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
 const ZKSYNC_CONTRACT_ADDRESS = "0x7ec7251192cdefe3ea352181ca0e6c2a08a411a5";
-
+const FAUCET_CONTRACT_ADDRESS = "0x59259943616265A03d775145a2eC371732E2B06C";
 const RINKEBY_CHAIN_ID = 4;
+const FAUCET_MIN_ABI = [
+  {
+    "constant": false,
+    "inputs": [],
+    "name": "create",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+];
 
 // The minimum ABI to get ERC20 Token balance
 const GNT_MIN_ABI = [
@@ -55,10 +68,13 @@ const GNT_MIN_ABI = [
   },
 ];
 
-const REQUESTOR_PRIV_KEY = '0x6fdf35e865b2472def9f8ddf692143b80b13895de695989396b215d3f60e303a';
+const MAX_GNT_BALANCE = ethers.utils.parseEther("1000.0");
+const MIN_ETH_BALANCE = Web3.utils.fromWei("100000000000000", 'ether');
+// const REQUESTOR_PRIV_KEY = '0x6fdf35e865b2472def9f8ddf692143b80b13895de695989396b215d3f60e303a';
 
 let web3 = null;
 let gnt_contract = null;
+let faucet_contract = null;
 
 main();
 
@@ -72,6 +88,7 @@ async function main() {
     web3 = new Web3(new Web3.providers.HttpProvider('http://1.geth.testnet.golem.network:55555'));
     // Creates GNT contracts
     gnt_contract = new web3.eth.Contract(GNT_MIN_ABI, GNT_CONTRACT_ADDRESS);
+    faucet_contract = new web3.eth.Contract(FAUCET_MIN_ABI, FAUCET_CONTRACT_ADDRESS);
     logger.info("web3 initialized!");
 
     logger.info("Loading zksync library...");
@@ -90,7 +107,8 @@ async function main() {
 
     // Create 2 wallet, requestor and provider
     // const requestorWallet = ethers.Wallet.fromMnemonic(MNEMONIT_REQEUSTOR).connect(ethersProvider);
-    const requestorWallet = new ethers.Wallet(REQUESTOR_PRIV_KEY, ethersProvider);
+    // const requestorWallet = new ethers.Wallet(REQUESTOR_PRIV_KEY, ethersProvider);
+    const requestorWallet = ethers.Wallet.createRandom().connect(ethersProvider);
     logger.debug("Requestor address: " + requestorWallet.address);
     const requestorSyncWallet = await zksync.Wallet.fromEthSigner(requestorWallet, syncProvider);
 
@@ -98,32 +116,14 @@ async function main() {
     logger.debug("Provider address: " + providerWallet.address);
     const providerSyncWallet = await zksync.Wallet.fromEthSigner(providerWallet, syncProvider);
 
-    logger.info("Sending increaseAllowance...");
-    const callData = gnt_contract.methods.increaseAllowance(ZKSYNC_CONTRACT_ADDRESS, utils.parseEther("100.0")).encodeABI();
-    const transactionParameters = {
-      to: GNT_CONTRACT_ADDRESS,
-      value: '0x00',
-      data: callData,
-      chainId: RINKEBY_CHAIN_ID,
-    };
-    let allowanceTx = await requestorWallet.sendTransaction(transactionParameters);
-    logger.info("Waiting for confirmation...");
-    let allowanceReceipt = await allowanceTx.wait();
-    logger.info("Done!");
-
-
-    // // // OPTIONAL: Request faucet on requestor
-    // // // 1. check balance ( ETH-ETH, ETH-GNT, ZK-ETH, ZK-GNT)
-    // // // 2. only faucet if total ETH or GNT is too low
-    // // logger.info("Enough funds available for this scenario");
-
     logger.info("Requesting funds for the Requestor...")
     await request_funds(requestorWallet);
     logger.info("Funds requested!")
 
+    await increaseAllowance(requestorWallet);
+
     logger.info("Before Requestor's funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
     logger.info("Before Provider's funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
-
 
     logger.info("Depositing Requestor's funds on zkSync...")
     // Deposit assets on requestor
@@ -245,19 +245,71 @@ function fromWei(amount) {
 
 async function request_funds(wallet) {
   await request_eth(wallet);
-  // await request_gnt(address);
+  await request_gnt(wallet);
 }
 
 async function request_eth(wallet) {
   let address = wallet.address;
-  logger.debug("Requesting ETH for: " + address);
+  logger.info("Requesting ETH for: " + address);
   let url = ETH_FAUCET_ADDRESS + "/" + address;
 
-  http.get(url, (res) => {
-    // logger.debug("ETH requested...");
-  });
+  var i = 0;
+
+  for (; i < 10; i++) {
+    const response = await fetch(url);
+    const r = await response.text();
+    logger.debug("ETH faucet repsonse: " + r);
+    if (r.includes("txhash") || r.includes("sufficient funds")) {
+      break;
+    }
+    await sleep(1000);
+  }
+
+  logger.info("Waiting for confirmations...");
+  await sleep(20000);
+
+  if (await get_eth_balance(wallet.address) < MIN_ETH_BALANCE) {
+    throwError("Cannot request ETH!")
+  }
+
+  logger.info("ETH requested!");
 }
 
 async function request_gnt(wallet) {
-  logger.debug("Requesting GNT for: " + wallet.address);
+  const gnt_balance = await get_gnt_balance(wallet.address);
+  if (gnt_balance < MAX_GNT_BALANCE) {
+    logger.info("Requesting GNT for: " + wallet.address);
+    const eth_balance = await get_eth_balance(wallet.address);
+    if (eth_balance < MIN_ETH_BALANCE) {
+      throwError("Insuficient gas for the Faucet!");
+    }
+
+    const callData = faucet_contract.methods.create().encodeABI();
+    const transactionParameters = {
+      to: FAUCET_CONTRACT_ADDRESS,
+      value: '0x00',
+      data: callData,
+      chainId: RINKEBY_CHAIN_ID,
+    };
+    let faucetTx = await wallet.sendTransaction(transactionParameters);
+    logger.info("Waiting for confirmations...");
+    let faucetReceipt = await faucetTx.wait();
+    logger.info("Done!");
+  }
+}
+
+async function increaseAllowance(wallet) {
+  logger.info("Sending increaseAllowance...");
+  const callData = gnt_contract.methods.increaseAllowance(ZKSYNC_CONTRACT_ADDRESS, utils.parseEther("100.0")).encodeABI();
+  const transactionParameters = {
+    to: GNT_CONTRACT_ADDRESS,
+    value: '0x00',
+    data: callData,
+    chainId: RINKEBY_CHAIN_ID,
+  };
+  let allowanceTx = await wallet.sendTransaction(transactionParameters);
+  logger.info("Waiting for confirmations...");
+  let allowanceReceipt = await allowanceTx.wait();
+  logger.info("Done!");
+
 }
