@@ -18,6 +18,7 @@ const GNT_CONTRACT_ADDRESS = "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
 const ZKSYNC_CONTRACT_ADDRESS = "0x7ec7251192cdefe3ea352181ca0e6c2a08a411a5";
 const FAUCET_CONTRACT_ADDRESS = "0x59259943616265A03d775145a2eC371732E2B06C";
 const RINKEBY_CHAIN_ID = 4;
+const GNT_ZKSYNC_ID = 16;
 const FAUCET_MIN_ABI = [
   {
     "constant": false,
@@ -108,11 +109,31 @@ const ZKSYNC_MIN_ABI = [
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "internalType": "contract IERC20",
+        "name": "_token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint128",
+        "name": "_amount",
+        "type": "uint128"
+      }
+    ],
+    "name": "withdrawERC20",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ]
 
-const MAX_GNT_BALANCE = ethers.utils.parseEther("1000.0");
-const MIN_ETH_BALANCE = Web3.utils.fromWei("100000000000000", 'ether');
+const MIN_GNT_BALANCE = ethers.utils.parseEther("10.0");
+const MIN_ETH_BALANCE = Web3.utils.fromWei("1000000000000000", 'ether');
 
 let web3 = null;
 let gnt_contract = null;
@@ -122,6 +143,7 @@ let zksync_contract = null;
 const ops = stdio.getopt({
   'provider': { key: 'p', args: 1, required: false, description: "Provider's mnemonic", default: "" },
   'requestor': { key: 'r', args: 1, required: false, description: "Requestor's mnemonic", default: "" },
+  'exodus': { key: 'e', args: 0, required: false, description: "Perform emergency withdrawal (exodus)", default: "" },
 });
 
 main();
@@ -130,7 +152,7 @@ async function main() {
   let syncProvider = false;
   let ethersProvider = false;
 
-  const exodus = process.argv.includes('exodus');
+  const exodus = ops.exodus;
   logger.info("Running " + (exodus ? "exodus" : "basic") + " zkSync scenario");
   try {
     logger.info("Initializing web3...");
@@ -173,6 +195,12 @@ async function main() {
     logger.info("Requesting funds for the Requestor...")
     await request_funds(requestorWallet);
     logger.info("Funds requested!")
+
+    if (exodus) {
+      logger.info("Requesting funds for the Provider...");
+      await request_eth(providerWallet);
+      logger.info("Funds requested!");
+    }
 
     await increaseAllowance(requestorWallet);
 
@@ -255,7 +283,7 @@ async function main() {
     if (exodus) {
       logger.info("Starting emergency withdrawal...");
       const emergencyWithdraw = await providerSyncWallet.emergencyWithdraw({
-        token: "ETH",
+        token: "GNT",
       });
       logger.info("Done.");
 
@@ -263,10 +291,10 @@ async function main() {
       await emergencyWithdraw.awaitVerifyReceipt();
       logger.info("Done.");
 
-      const balanceToWithdraw = await zksync_contract.methods.getBalanceToWithdraw(providerWallet.address, 0).call();
-      logger.info("Balance to withdraw: " + balanceToWithdraw);
+      const balanceToWithdraw = await zksync_contract.methods.getBalanceToWithdraw(providerWallet.address, GNT_ZKSYNC_ID).call();
+      logger.info("Balance to withdraw: " + fromWei(balanceToWithdraw) + " GNT");
 
-      const withdrawalCallData = zksync_contract.methods.withdrawETH(balanceToWithdraw).encodeABI();
+      const withdrawalCallData = zksync_contract.methods.withdrawERC20(GNT_CONTRACT_ADDRESS, balanceToWithdraw).encodeABI();
       logger.info("Withdrawing to Ethereum chain...");
       const withdrawalTx = await providerWallet.sendTransaction({
         to: ZKSYNC_CONTRACT_ADDRESS,
@@ -281,19 +309,19 @@ async function main() {
 
     } else {
       const totalBalance = await providerSyncWallet.getBalance("GNT");
-      logger.info("Total balance to withdraw: " + totalBalance);
+      logger.info("Total balance: " + fromWei(totalBalance) + " GNT");
 
       const withdrawFee = (await syncProvider.getTransactionFee("Withdraw", providerWallet.address, "GNT")).totalFee;
-      logger.info("Withdraw fee: " + withdrawFee);
+      logger.info("Withdraw fee: " + fromWei(withdrawFee) + " GNT");
 
-      const withdrawAmount = totalBalance - withdrawFee;
-      logger.info("Withdraw amount: " + withdrawAmount);
+      const withdrawAmount = fromWei(totalBalance - withdrawFee);
+      logger.info("Withdraw amount: " + withdrawAmount + " GNT");
 
       logger.info("Withdrawing Provider's funds...");
       const withdraw = await providerSyncWallet.withdrawFromSyncToEthereum({
         ethAddress: providerWallet.address,
         token: "GNT",
-        amount: withdrawAmount,
+        amount: ethers.utils.parseEther(withdrawAmount),
       });
       logger.info("Done!");
 
@@ -301,12 +329,14 @@ async function main() {
       const withdrawalReceipt = await withdraw.awaitVerifyReceipt();
       logger.info("Done!");
 
+    }
     logger.info("(After withdrawal) Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT")) + " GNT");
     logger.info("(After withdrawal) Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT", "verified")) + " GNT");
 
     logger.info("(After withdrawal) Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT")) + " GNT");
     logger.info("(After withdrawal) Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT", "verified")) + " GNT");
-    }
+
+    logger.info("(After withdrawal) Provider's funds on ethereum: " + (await get_gnt_balance(providerWallet.address)) + " GNT");
 
     logger.info("Scenario completed, have a nice day!");
   } catch (e) {
@@ -337,6 +367,11 @@ async function request_funds(wallet) {
 
 async function request_eth(wallet) {
   let address = wallet.address;
+
+  if (await get_eth_balance(address) >= MIN_ETH_BALANCE) {
+    return
+  }
+
   logger.info("Requesting ETH for: " + address);
   let url = ETH_FAUCET_ADDRESS + "/" + address;
 
@@ -353,7 +388,7 @@ async function request_eth(wallet) {
   }
 
   logger.info("Waiting for confirmations...");
-  await sleep_with_progress_bar(20);
+  await sleep_with_progress_bar(30);
 
   if (await get_eth_balance(wallet.address) < MIN_ETH_BALANCE) {
     throwError("Cannot request ETH!")
@@ -364,7 +399,7 @@ async function request_eth(wallet) {
 
 async function request_gnt(wallet) {
   const gnt_balance = await get_gnt_balance(wallet.address);
-  if (gnt_balance < MAX_GNT_BALANCE) {
+  if (gnt_balance < MIN_GNT_BALANCE) {
     logger.info("Requesting GNT for: " + wallet.address);
     const eth_balance = await get_eth_balance(wallet.address);
     if (eth_balance < MIN_ETH_BALANCE) {
