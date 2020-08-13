@@ -16,7 +16,9 @@
   "license": "ISC",
   "dependencies": {
     "ethers": "^4.0.46",
-    "web3": "^1.2.9",
+    "node-fetch": "^2.6.0",
+    "stdio": "^2.1.1",
+    "web3": "^1.2.11",
     "winston": "^3.3.3",
     "zksync": "^0.5.15"
   }
