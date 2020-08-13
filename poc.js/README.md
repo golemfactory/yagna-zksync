@@ -31,13 +31,19 @@ yarn install
 
 for "happy path":
 
-```
+```console
 npm run basic
+```
+
+or create wallets from mnemonic:
+
+```console
+npm run basic -- -r <requestor_mnemonic> -p <provider_mnemonic>
 ```
 
 for exodus path:
 
-```
+```console
 npm run exodus
 ```
 
@@ -54,7 +60,7 @@ npm run exodus
   - [x] transfer
   - [x] withdraw
   - [ ] return funds (OPT)
-- [ ] adjust scenario to include NGNT
+- [x] adjust scenario to include NGNT
 - [ ] make readme better
 - [ ] add exodus script, move shared logic to `src/lib.js`
 
