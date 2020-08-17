@@ -38,7 +38,7 @@ npm run basic
 or create wallets from mnemonic:
 
 ```console
-npm run basic -- -r <requestor_mnemonic> -p <provider_mnemonic>
+npm run basic -- -r "<requestor_mnemonic>" -p "<provider_mnemonic>"
 ```
 
 for exodus path:
@@ -62,7 +62,7 @@ npm run exodus
   - [ ] return funds (OPT)
 - [x] adjust scenario to include NGNT
 - [ ] make readme better
-- [ ] add exodus script, move shared logic to `src/lib.js`
+- [x] add exodus script, ~~move shared logic to `src/lib.js`.~~
 
 ## Notes
 
