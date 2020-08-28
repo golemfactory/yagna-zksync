@@ -2,6 +2,7 @@ const ethers = require("ethers");
 const fetch = require("node-fetch");
 const Web3 = require('web3');
 const stdio = require('stdio');
+const fs = require('fs');
 
 const { createLogger, format, transports } = require("winston");
 const { utils } = require("ethers");
@@ -144,6 +145,7 @@ const ops = stdio.getopt({
   'provider': { key: 'p', args: 1, required: false, description: "Provider's mnemonic", default: "" },
   'requestor': { key: 'r', args: 1, required: false, description: "Requestor's mnemonic", default: "" },
   'exodus': { key: 'e', args: 0, required: false, description: "Perform emergency withdrawal (exodus)", default: "" },
+  'save': { key: 's', args: 0, required: false, description: "Save key.json files generated during this run", default: "" },
 });
 
 main();
@@ -153,6 +155,7 @@ async function main() {
   let ethersProvider = false;
 
   const exodus = ops.exodus;
+  const saveKeys = ops.save;
   logger.info("Running " + (exodus ? "exodus" : "basic") + " zkSync scenario");
   try {
     logger.info("Initializing web3...");
@@ -183,6 +186,13 @@ async function main() {
       : ethers.Wallet.createRandom().connect(ethersProvider);
     logger.info("Requestor address: " + requestorWallet.address);
     logger.info("Requestor mnemonic: " + requestorWallet.mnemonic)
+    if (saveKeys) {
+      let json_key = await requestorWallet.encrypt("");
+      // Fix for capital sensetivity of yagna keyfile
+      json_key = json_key.replace("Crypto", "crypto");
+      logger.info("Requestor json: " + json_key);
+      fs.writeFileSync( "requestor.key.json", json_key);
+    }
     const requestorSyncWallet = await zksync.Wallet.fromEthSigner(requestorWallet, syncProvider);
 
     const providerWallet = ops.provider && ops.provider !== "" ?
@@ -190,6 +200,13 @@ async function main() {
       : ethers.Wallet.createRandom().connect(ethersProvider);
     logger.info("Provider address: " + providerWallet.address);
     logger.info("Provider mnemonic: " + providerWallet.mnemonic);
+    if (saveKeys) {
+      let json_key = await providerWallet.encrypt("");
+      // Fix for capital sensetivity of yagna keyfile
+      json_key = json_key.replace("Crypto", "crypto");
+      logger.info("Provider json: " + json_key);
+      fs.writeFileSync( "provider.key.json", json_key);
+    }
     const providerSyncWallet = await zksync.Wallet.fromEthSigner(providerWallet, syncProvider);
 
     logger.info("Requesting funds for the Requestor...")
