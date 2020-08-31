@@ -19,7 +19,6 @@ const logger = createLogger({
 
 const ETH_FAUCET_ADDRESS = "http://faucet.testnet.golem.network:4000/donate";
 const GNT_CONTRACT_ADDRESS = "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
-const ZKSYNC_CONTRACT_ADDRESS = "0x7ec7251192cdefe3ea352181ca0e6c2a08a411a5";
 const FAUCET_CONTRACT_ADDRESS = "0x59259943616265A03d775145a2eC371732E2B06C";
 const RINKEBY_CHAIN_ID = 4;
 const GNT_ZKSYNC_ID = 16;
@@ -142,6 +141,7 @@ const MIN_ETH_BALANCE = Web3.utils.fromWei("1000000000000000", 'ether');
 let web3 = null;
 let gnt_contract = null;
 let faucet_contract = null;
+let zksync_contract_address = null;
 let zksync_contract = null;
 
 const ops = stdio.getopt({
@@ -166,7 +166,6 @@ async function main() {
     // Creates GNT contracts
     gnt_contract = new web3.eth.Contract(GNT_MIN_ABI, GNT_CONTRACT_ADDRESS);
     faucet_contract = new web3.eth.Contract(FAUCET_MIN_ABI, FAUCET_CONTRACT_ADDRESS);
-    zksync_contract = new web3.eth.Contract(ZKSYNC_MIN_ABI, ZKSYNC_CONTRACT_ADDRESS);
     logger.info("web3 initialized!");
 
     logger.info("Loading zksync library...");
@@ -175,6 +174,10 @@ async function main() {
     // To interact with Sync network users need to know the endpoint of the operator node.
     logger.debug("Connecting to rinkeby zkSync-provider...");
     const syncProvider = await zksync.getDefaultProvider("rinkeby", "HTTP");
+    const contractInfo = await syncProvider.getContractAddress();
+    zksync_contract_address = contractInfo.mainContract;
+    logger.debug("Using contract address: %s", zksync_contract_address);
+    zksync_contract = new web3.eth.Contract(ZKSYNC_MIN_ABI, zksync_contract_address);
 
     // Most operations require some read-only access to the Ethereum network.
     // We use ethers library to interact with Ethereum.
@@ -317,7 +320,7 @@ async function main() {
       const withdrawalCallData = zksync_contract.methods.withdrawERC20(GNT_CONTRACT_ADDRESS, balanceToWithdraw).encodeABI();
       logger.info("Withdrawing to Ethereum chain...");
       const withdrawalTx = await providerWallet.sendTransaction({
-        to: ZKSYNC_CONTRACT_ADDRESS,
+        to: zksync_contract_address,
         chainId: RINKEBY_CHAIN_ID,
         data: withdrawalCallData
       });
@@ -442,7 +445,7 @@ async function request_gnt(wallet) {
 
 async function increaseAllowance(wallet) {
   logger.info("Sending increaseAllowance...");
-  const callData = gnt_contract.methods.increaseAllowance(ZKSYNC_CONTRACT_ADDRESS, utils.parseEther("100.0")).encodeABI();
+  const callData = gnt_contract.methods.increaseAllowance(zksync_contract_address, utils.parseEther("100.0")).encodeABI();
   const transactionParameters = {
     to: GNT_CONTRACT_ADDRESS,
     value: '0x00',
