@@ -10,7 +10,10 @@ const { throwError } = require("ethers/errors");
 const { sleep } = require("zksync/build/utils");
 const logger = createLogger({
   level: "debug",
-  format: format.simple(),
+  format: format.combine(
+    format.splat(),
+    format.simple()
+  ),
   transports: [new transports.Console()],
 });
 
