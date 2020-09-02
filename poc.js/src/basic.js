@@ -151,6 +151,13 @@ const ops = stdio.getopt({
   'save': { key: 's', args: 0, required: false, description: "Save key.json files generated during this run", default: "" },
 });
 
+const wallet_options = {
+  scrypt: {
+    // The number must be a power of 2 (default: 131072)
+    N: 2
+  }
+};
+
 main();
 
 async function main() {
@@ -193,7 +200,7 @@ async function main() {
     logger.info("Requestor address: " + requestorWallet.address);
     logger.info("Requestor mnemonic: " + requestorWallet.mnemonic)
     if (saveKeys) {
-      let json_key = await requestorWallet.encrypt("");
+      let json_key = await requestorWallet.encrypt("", wallet_options);
       // Fix for capital sensetivity of yagna keyfile
       json_key = json_key.replace("Crypto", "crypto");
       logger.info("Requestor json: " + json_key);
@@ -207,7 +214,7 @@ async function main() {
     logger.info("Provider address: " + providerWallet.address);
     logger.info("Provider mnemonic: " + providerWallet.mnemonic);
     if (saveKeys) {
-      let json_key = await providerWallet.encrypt("");
+      let json_key = await providerWallet.encrypt("", wallet_options);
       // Fix for capital sensetivity of yagna keyfile
       json_key = json_key.replace("Crypto", "crypto");
       logger.info("Provider json: " + json_key);
