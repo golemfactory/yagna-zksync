@@ -17,10 +17,12 @@ const logger = createLogger({
   transports: [new transports.Console()],
 });
 
-const ETH_FAUCET_ADDRESS = "http://faucet.testnet.golem.network:4000/donate";
-const GNT_CONTRACT_ADDRESS = "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
-const FAUCET_CONTRACT_ADDRESS = "0x59259943616265A03d775145a2eC371732E2B06C";
-const RINKEBY_CHAIN_ID = 4;
+const WEB3_URL = process.env.WEB3_URL || "http://1.geth.testnet.golem.network:55555";
+const ZKSYNC_PROVIDER_URL = process.env.ZKSYNC_PROVIDER_URL || "https://rinkeby-api.zksync.io/jsrpc";
+const ETH_FAUCET_ADDRESS = process.env.ETH_FAUCET_ADDRESS || "http://faucet.testnet.golem.network:4000/donate";
+const GNT_CONTRACT_ADDRESS = process.env.GNT_CONTRACT_ADDRESS || "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
+const FAUCET_CONTRACT_ADDRESS = process.env.FAUCET_CONTRACT_ADDRESS || "0x59259943616265A03d775145a2eC371732E2B06C";
+const CHAIN_ID = process.env.CHAIN_ID || 4;  // Default fo rinkeby
 const GNT_ZKSYNC_ID = 16;
 const FAUCET_MIN_ABI = [
   {
@@ -145,8 +147,8 @@ let zksync_contract_address = null;
 let zksync_contract = null;
 
 const ops = stdio.getopt({
-  'provider': { key: 'p', args: 1, required: false, description: "Provider's mnemonic", default: "" },
-  'requestor': { key: 'r', args: 1, required: false, description: "Requestor's mnemonic", default: "" },
+  'provider': { key: 'p', args: 1, required: false, description: "Provider's private key", default: "" },
+  'requestor': { key: 'r', args: 1, required: false, description: "Requestor's private key", default: "" },
   'exodus': { key: 'e', args: 0, required: false, description: "Perform emergency withdrawal (exodus)", default: "" },
   'save': { key: 's', args: 0, required: false, description: "Save key.json files generated during this run", default: "" },
 });
@@ -169,7 +171,7 @@ async function main() {
   logger.info("Running " + (exodus ? "exodus" : "basic") + " zkSync scenario");
   try {
     logger.info("Initializing web3...");
-    web3 = new Web3(new Web3.providers.HttpProvider('http://1.geth.testnet.golem.network:55555'));
+    web3 = new Web3(new Web3.providers.HttpProvider(WEB3_URL));
     // Creates GNT contracts
     gnt_contract = new web3.eth.Contract(GNT_MIN_ABI, GNT_CONTRACT_ADDRESS);
     faucet_contract = new web3.eth.Contract(FAUCET_MIN_ABI, FAUCET_CONTRACT_ADDRESS);
@@ -180,7 +182,7 @@ async function main() {
 
     // To interact with Sync network users need to know the endpoint of the operator node.
     logger.debug("Connecting to rinkeby zkSync-provider...");
-    const syncProvider = await zksync.getDefaultProvider("rinkeby", "HTTP");
+    const syncProvider = await zksync.Provider.newHttpProvider();
     const contractInfo = await syncProvider.getContractAddress();
     zksync_contract_address = contractInfo.mainContract;
     logger.debug("Using contract address: %s", zksync_contract_address);
@@ -189,16 +191,16 @@ async function main() {
     // Most operations require some read-only access to the Ethereum network.
     // We use ethers library to interact with Ethereum.
     logger.debug("Connecting to rinkeby ethers-provider...");
-    ethersProvider = new ethers.getDefaultProvider("rinkeby");
+    ethersProvider = new ethers.providers.JsonRpcProvider(WEB3_URL);
 
     logger.info("Libraries loaded!");
 
     // Create 2 wallet, requestor and provider
     const requestorWallet = ops.requestor && ops.requestor !== "" ?
-      ethers.Wallet.fromMnemonic(ops.requestor).connect(ethersProvider)
+      (new ethers.Wallet(ops.requestor)).connect(ethersProvider)
       : ethers.Wallet.createRandom().connect(ethersProvider);
     logger.info("Requestor address: " + requestorWallet.address);
-    logger.info("Requestor mnemonic: " + requestorWallet.mnemonic)
+    logger.info("Requestor private key: " + requestorWallet.privateKey)
     if (saveKeys) {
       let json_key = await requestorWallet.encrypt("", wallet_options);
       // Fix for capital sensetivity of yagna keyfile
@@ -209,10 +211,10 @@ async function main() {
     const requestorSyncWallet = await zksync.Wallet.fromEthSigner(requestorWallet, syncProvider);
 
     const providerWallet = ops.provider && ops.provider !== "" ?
-      ethers.Wallet.fromMnemonic(ops.provider).connect(ethersProvider)
+      (new ethers.Wallet(ops.provider)).connect(ethersProvider)
       : ethers.Wallet.createRandom().connect(ethersProvider);
     logger.info("Provider address: " + providerWallet.address);
-    logger.info("Provider mnemonic: " + providerWallet.mnemonic);
+    logger.info("Provider private key: " + providerWallet.privateKey);
     if (saveKeys) {
       let json_key = await providerWallet.encrypt("", wallet_options);
       // Fix for capital sensetivity of yagna keyfile
@@ -328,7 +330,7 @@ async function main() {
       logger.info("Withdrawing to Ethereum chain...");
       const withdrawalTx = await providerWallet.sendTransaction({
         to: zksync_contract_address,
-        chainId: RINKEBY_CHAIN_ID,
+        chainId: CHAIN_ID,
         data: withdrawalCallData
       });
       logger.info("Done.");
@@ -441,7 +443,7 @@ async function request_gnt(wallet) {
       to: FAUCET_CONTRACT_ADDRESS,
       value: '0x00',
       data: callData,
-      chainId: RINKEBY_CHAIN_ID,
+      chainId: CHAIN_ID,
     };
     let faucetTx = await wallet.sendTransaction(transactionParameters);
     logger.info("Waiting for confirmations...");
@@ -457,7 +459,7 @@ async function increaseAllowance(wallet) {
     to: GNT_CONTRACT_ADDRESS,
     value: '0x00',
     data: callData,
-    chainId: RINKEBY_CHAIN_ID,
+    chainId: CHAIN_ID,
   };
   let allowanceTx = await wallet.sendTransaction(transactionParameters);
   logger.info("Waiting for confirmations...");
