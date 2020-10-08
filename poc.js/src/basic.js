@@ -3,10 +3,9 @@ const fetch = require("node-fetch");
 const Web3 = require('web3');
 const stdio = require('stdio');
 const fs = require('fs');
+const BN = require('bn.js');
 
 const { createLogger, format, transports } = require("winston");
-const { utils } = require("ethers");
-const { throwError } = require("ethers/errors");
 const { sleep } = require("zksync/build/utils");
 const logger = createLogger({
   level: "debug",
@@ -137,7 +136,12 @@ const ZKSYNC_MIN_ABI = [
   }
 ]
 
-const MIN_GNT_BALANCE = ethers.utils.parseEther("10.0");
+function web3ParseEther(number_string) {
+  // Using BN instead of BigNumber because of this: https://github.com/ethereum/web3.js/issues/3702
+  return new BN(ethers.utils.parseEther(number_string).toString());
+}
+
+const MIN_GNT_BALANCE = web3ParseEther("10.0");
 const MIN_ETH_BALANCE = Web3.utils.fromWei("1000000000000000", 'ether');
 
 let web3 = null;
@@ -182,7 +186,7 @@ async function main() {
 
     // To interact with Sync network users need to know the endpoint of the operator node.
     logger.debug("Connecting to rinkeby zkSync-provider...");
-    const syncProvider = await zksync.Provider.newHttpProvider();
+    const syncProvider = await zksync.Provider.newHttpProvider(ZKSYNC_PROVIDER_URL);
     const contractInfo = await syncProvider.getContractAddress();
     zksync_contract_address = contractInfo.mainContract;
     logger.debug("Using contract address: %s", zksync_contract_address);
@@ -423,7 +427,7 @@ async function request_eth(wallet) {
   await sleep_with_progress_bar(30);
 
   if (await get_eth_balance(wallet.address) < MIN_ETH_BALANCE) {
-    throwError("Cannot request ETH!")
+    throw new Error("Cannot request ETH!")
   }
 
   logger.info("ETH requested!");
@@ -435,7 +439,7 @@ async function request_gnt(wallet) {
     logger.info("Requesting GNT for: " + wallet.address);
     const eth_balance = await get_eth_balance(wallet.address);
     if (eth_balance < MIN_ETH_BALANCE) {
-      throwError("Insuficient gas for the Faucet!");
+      throw new Error("Insuficient gas for the Faucet!");
     }
 
     const callData = faucet_contract.methods.create().encodeABI();
@@ -454,7 +458,7 @@ async function request_gnt(wallet) {
 
 async function increaseAllowance(wallet) {
   logger.info("Sending increaseAllowance...");
-  const callData = gnt_contract.methods.increaseAllowance(zksync_contract_address, utils.parseEther("100.0")).encodeABI();
+  const callData = gnt_contract.methods.increaseAllowance(zksync_contract_address, web3ParseEther("100.0")).encodeABI();
   const transactionParameters = {
     to: GNT_CONTRACT_ADDRESS,
     value: '0x00',
