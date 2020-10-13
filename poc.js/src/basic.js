@@ -270,7 +270,17 @@ async function main() {
         throw new Error("Unknwon account");
       }
 
-      const changeRequestorPubkey = await requestorSyncWallet.setSigningKey();
+      const requestorUnlockFee = (await syncProvider.getTransactionFee({
+        ChangePubKey: {
+            onchainPubkeyAuth: false,
+        },
+      }, requestorWallet.address, "GNT")).totalFee;
+      logger.info("Unlock fee: " + fromWei(requestorUnlockFee) + " GNT");
+      const changeRequestorPubkey = await requestorSyncWallet.setSigningKey({
+        feeToken: "GNT",
+        fee: zksync.utils.closestPackableTransactionAmount(requestorUnlockFee),
+        onchainAuth: false
+      });
 
       // Wait until the tx is committed
       await changeRequestorPubkey.awaitReceipt();
@@ -309,7 +319,17 @@ async function main() {
         throw new Error("Unknwon account");
       }
 
-      const changeProviderPubkey = await providerSyncWallet.setSigningKey();
+      const providerUnlockFee = (await syncProvider.getTransactionFee({
+        ChangePubKey: {
+            onchainPubkeyAuth: false,
+        },
+      }, providerWallet.address, "GNT")).totalFee;
+      logger.info("Unlock fee: " + fromWei(providerUnlockFee) + " GNT");
+      const changeProviderPubkey = await providerSyncWallet.setSigningKey({
+        feeToken: "GNT",
+        fee: zksync.utils.closestPackableTransactionAmount(providerUnlockFee),
+        onchainAuth: false
+      });
 
       // Wait until the tx is committed
       await changeProviderPubkey.awaitReceipt();
