@@ -32,19 +32,25 @@ yarn install
 for "happy path":
 
 ```console
-npm run basic
+yarn basic
 ```
 
-or create wallets from mnemonic:
+save private keys to files:
+
+ ```console
+yarn basic -s
+```
+
+use existing private keys:
 
 ```console
-npm run basic -- -r "<requestor_mnemonic>" -p "<provider_mnemonic>"
+yarn basic -r "<requestor_private_key>" -p "<provider_private_key>"
 ```
 
 for exodus path:
 
 ```console
-npm run exodus
+yarn exodus
 ```
 
 ## TODO
@@ -61,7 +67,7 @@ npm run exodus
   - [x] withdraw
   - [ ] return funds (OPT)
 - [x] adjust scenario to include NGNT
-- [ ] make readme better
+- [x] make readme better
 - [x] add exodus script, ~~move shared logic to `src/lib.js`.~~
 
 ## Notes
