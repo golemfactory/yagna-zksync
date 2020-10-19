@@ -327,7 +327,7 @@ async function main() {
       logger.info("Unlock fee: " + fromWei(providerUnlockFee) + " GNT");
       const changeProviderPubkey = await providerSyncWallet.setSigningKey({
         feeToken: "GNT",
-        fee: zksync.utils.closestPackableTransactionAmount(providerUnlockFee),
+        fee: zksync.utils. closestPackableTransactionFee(providerUnlockFee),
         onchainAuth: false
       });
 
