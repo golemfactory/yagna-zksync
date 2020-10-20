@@ -21,7 +21,7 @@ const ZKSYNC_PROVIDER_URL = process.env.ZKSYNC_PROVIDER_URL || "https://rinkeby-
 const ETH_FAUCET_ADDRESS = process.env.ETH_FAUCET_ADDRESS || "http://faucet.testnet.golem.network:4000/donate";
 const GNT_CONTRACT_ADDRESS = process.env.GNT_CONTRACT_ADDRESS || "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
 const FAUCET_CONTRACT_ADDRESS = process.env.FAUCET_CONTRACT_ADDRESS || "0x59259943616265A03d775145a2eC371732E2B06C";
-const CHAIN_ID = process.env.CHAIN_ID || 4;  // Default fo rinkeby
+const CHAIN_ID = parseInt(process.env.CHAIN_ID) || 4;  // Default fo rinkeby
 const GNT_ZKSYNC_ID = 16;
 const FAUCET_MIN_ABI = [
   {
@@ -141,7 +141,7 @@ function web3ParseEther(number_string) {
   return new BN(ethers.utils.parseEther(number_string).toString());
 }
 
-const MIN_GNT_BALANCE = web3ParseEther("10.0");
+const MIN_GNT_BALANCE = 10;
 const MIN_ETH_BALANCE = Web3.utils.fromWei("1000000000000000", 'ether');
 
 let web3 = null;
@@ -195,7 +195,7 @@ async function main() {
     // Most operations require some read-only access to the Ethereum network.
     // We use ethers library to interact with Ethereum.
     logger.debug("Connecting to rinkeby ethers-provider...");
-    ethersProvider = new ethers.providers.JsonRpcProvider(WEB3_URL);
+    ethersProvider = new ethers.providers.JsonRpcProvider(WEB3_URL, CHAIN_ID);
 
     logger.info("Libraries loaded!");
 
