@@ -3,10 +3,9 @@ const fetch = require("node-fetch");
 const Web3 = require('web3');
 const stdio = require('stdio');
 const fs = require('fs');
+const BN = require('bn.js');
 
 const { createLogger, format, transports } = require("winston");
-const { utils } = require("ethers");
-const { throwError } = require("ethers/errors");
 const { sleep } = require("zksync/build/utils");
 const logger = createLogger({
   level: "debug",
@@ -22,7 +21,7 @@ const ZKSYNC_PROVIDER_URL = process.env.ZKSYNC_PROVIDER_URL || "https://rinkeby-
 const ETH_FAUCET_ADDRESS = process.env.ETH_FAUCET_ADDRESS || "http://faucet.testnet.golem.network:4000/donate";
 const GNT_CONTRACT_ADDRESS = process.env.GNT_CONTRACT_ADDRESS || "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
 const FAUCET_CONTRACT_ADDRESS = process.env.FAUCET_CONTRACT_ADDRESS || "0x59259943616265A03d775145a2eC371732E2B06C";
-const CHAIN_ID = process.env.CHAIN_ID || 4;  // Default fo rinkeby
+const CHAIN_ID = parseInt(process.env.CHAIN_ID) || 4;  // Default fo rinkeby
 const GNT_ZKSYNC_ID = 16;
 const FAUCET_MIN_ABI = [
   {
@@ -137,7 +136,12 @@ const ZKSYNC_MIN_ABI = [
   }
 ]
 
-const MIN_GNT_BALANCE = ethers.utils.parseEther("10.0");
+function web3ParseEther(number_string) {
+  // Using BN instead of BigNumber because of this: https://github.com/ethereum/web3.js/issues/3702
+  return new BN(ethers.utils.parseEther(number_string).toString());
+}
+
+const MIN_GNT_BALANCE = 10;
 const MIN_ETH_BALANCE = Web3.utils.fromWei("1000000000000000", 'ether');
 
 let web3 = null;
@@ -182,7 +186,7 @@ async function main() {
 
     // To interact with Sync network users need to know the endpoint of the operator node.
     logger.debug("Connecting to rinkeby zkSync-provider...");
-    const syncProvider = await zksync.Provider.newHttpProvider();
+    const syncProvider = await zksync.Provider.newHttpProvider(ZKSYNC_PROVIDER_URL);
     const contractInfo = await syncProvider.getContractAddress();
     zksync_contract_address = contractInfo.mainContract;
     logger.debug("Using contract address: %s", zksync_contract_address);
@@ -191,7 +195,7 @@ async function main() {
     // Most operations require some read-only access to the Ethereum network.
     // We use ethers library to interact with Ethereum.
     logger.debug("Connecting to rinkeby ethers-provider...");
-    ethersProvider = new ethers.providers.JsonRpcProvider(WEB3_URL);
+    ethersProvider = new ethers.providers.JsonRpcProvider(WEB3_URL, CHAIN_ID);
 
     logger.info("Libraries loaded!");
 
@@ -266,7 +270,17 @@ async function main() {
         throw new Error("Unknwon account");
       }
 
-      const changeRequestorPubkey = await requestorSyncWallet.setSigningKey();
+      const requestorUnlockFee = (await syncProvider.getTransactionFee({
+        ChangePubKey: {
+            onchainPubkeyAuth: false,
+        },
+      }, requestorWallet.address, "GNT")).totalFee;
+      logger.info("Unlock fee: " + fromWei(requestorUnlockFee) + " GNT");
+      const changeRequestorPubkey = await requestorSyncWallet.setSigningKey({
+        feeToken: "GNT",
+        fee: zksync.utils.closestPackableTransactionFee(requestorUnlockFee),
+        onchainAuth: false
+      });
 
       // Wait until the tx is committed
       await changeRequestorPubkey.awaitReceipt();
@@ -305,7 +319,17 @@ async function main() {
         throw new Error("Unknwon account");
       }
 
-      const changeProviderPubkey = await providerSyncWallet.setSigningKey();
+      const providerUnlockFee = (await syncProvider.getTransactionFee({
+        ChangePubKey: {
+            onchainPubkeyAuth: false,
+        },
+      }, providerWallet.address, "GNT")).totalFee;
+      logger.info("Unlock fee: " + fromWei(providerUnlockFee) + " GNT");
+      const changeProviderPubkey = await providerSyncWallet.setSigningKey({
+        feeToken: "GNT",
+        fee: zksync.utils. closestPackableTransactionFee(providerUnlockFee),
+        onchainAuth: false
+      });
 
       // Wait until the tx is committed
       await changeProviderPubkey.awaitReceipt();
@@ -423,7 +447,7 @@ async function request_eth(wallet) {
   await sleep_with_progress_bar(30);
 
   if (await get_eth_balance(wallet.address) < MIN_ETH_BALANCE) {
-    throwError("Cannot request ETH!")
+    throw new Error("Cannot request ETH!")
   }
 
   logger.info("ETH requested!");
@@ -435,7 +459,7 @@ async function request_gnt(wallet) {
     logger.info("Requesting GNT for: " + wallet.address);
     const eth_balance = await get_eth_balance(wallet.address);
     if (eth_balance < MIN_ETH_BALANCE) {
-      throwError("Insuficient gas for the Faucet!");
+      throw new Error("Insuficient gas for the Faucet!");
     }
 
     const callData = faucet_contract.methods.create().encodeABI();
@@ -454,7 +478,7 @@ async function request_gnt(wallet) {
 
 async function increaseAllowance(wallet) {
   logger.info("Sending increaseAllowance...");
-  const callData = gnt_contract.methods.increaseAllowance(zksync_contract_address, utils.parseEther("100.0")).encodeABI();
+  const callData = gnt_contract.methods.increaseAllowance(zksync_contract_address, web3ParseEther("100.0")).encodeABI();
   const transactionParameters = {
     to: GNT_CONTRACT_ADDRESS,
     value: '0x00',

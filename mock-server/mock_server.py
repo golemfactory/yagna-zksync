@@ -99,8 +99,8 @@ def get_tx_fee(tx_type, *args):
 
 
 @dispatcher.add_method
-def tx_submit(params, signature):
-    print(f"submit_tx({params}, {signature})")
+def tx_submit(params, signature, fast_processing):
+    print(f"submit_tx({params}, {signature}, {fast_processing})")
     if params["type"] == "Withdraw":
         tx_hash = ZKSYNC.functions.withdrawERC20(NGNT_ADDRESS, int(params["amount"]), params["to"]).transact()
         return tx_hash.hex()
