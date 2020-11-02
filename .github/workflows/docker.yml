@@ -1,0 +1,28 @@
+name: Publish Docker image to GitHub Package Registry
+
+on:
+  push:
+    branches:
+      - master
+      # - <your-branch>    # put your branch name here to test it @ GH Actions
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Copy Repo Files
+      uses: actions/checkout@master
+
+     #This Action Emits 2 Variables, IMAGE_SHA_NAME and IMAGE_URL
+     #which you can reference in subsequent steps
+    - name: Publish Docker Image to GPR
+      uses: machine-learning-apps/gpr-docker-publish@master
+      id: docker
+      with:
+        IMAGE_NAME: 'yagna-zksync-mock'
+        # TAG: 'my-optional-tag-name'
+        DOCKERFILE_PATH: 'mock-server/Dockerfile'
+        BUILD_CONTEXT: 'mock-server/'
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
