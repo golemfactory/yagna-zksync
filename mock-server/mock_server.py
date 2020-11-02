@@ -1,8 +1,5 @@
-from werkzeug.wrappers import Request, Response
-from werkzeug.serving import run_simple
-
-from jsonrpc import JSONRPCResponseManager, dispatcher
-
+from flask import Flask
+from jsonrpc.backend.flask import api
 from web3.auto import w3
 
 w3.eth.defaultAccount = w3.eth.accounts[0]
@@ -37,6 +34,10 @@ NGNT_MNI_ABI = [
 ]
 NGNT = w3.eth.contract(address=NGNT_ADDRESS, abi=NGNT_MNI_ABI)
 
+dispatcher = api.dispatcher
+
+balances = {}
+
 
 @dispatcher.add_method
 def contract_address():
@@ -63,31 +64,43 @@ def tokens():
 @dispatcher.add_method
 def account_info(address):
     print(f"account_info({address})")
-    ngnt_balance = str(NGNT.caller.balanceOf(ZKSYNC_ADDRESS))
+    deposited_balance = NGNT.caller.balanceOf(ZKSYNC_ADDRESS)
+    donated_balance = balances.get(address, 0)
+    total_balance = str(deposited_balance + donated_balance)
     return {
         "address": address,
         "id": 1,
         "committed": {
             "balances": {
-                "GNT": ngnt_balance,
+                "GNT": total_balance,
             },
             "nonce": 0,
+            "pubKeyHash": "sync:0000000000000000000000000000000000000000"
         },
         "depositing": {
             "balances": {}
         },
         "verified": {
             "balances": {
-                "GNT": ngnt_balance,
+                "GNT": total_balance,
             },
             "nonce": 0,
+            "pubKeyHash": "sync:0000000000000000000000000000000000000000"
         }
     }
 
 
 @dispatcher.add_method
 def get_tx_fee(tx_type, *args):
-    print(f"transaction_fee{(tx_type,) + args}")
+    print(f"get_tx_fee{(tx_type,) + args}")
+
+    # An ugly workaround for a bug zkSync client
+    try:
+        tx_type["ChangePubKey"]["onchain_pubkey_auth"] = tx_type["ChangePubKey"]["onchainPubkeyAuth"]
+    except (TypeError, KeyError):
+        pass
+    # End of workaround
+
     return {
         "feeType": tx_type,
         "gasTxAmount": "0",
@@ -99,12 +112,21 @@ def get_tx_fee(tx_type, *args):
 
 
 @dispatcher.add_method
-def tx_submit(params, signature, fast_processing):
-    print(f"submit_tx({params}, {signature}, {fast_processing})")
+def tx_submit(params, *args):
+    print(f"tx_submit{(params,) + args}")
+
     if params["type"] == "Withdraw":
         tx_hash = ZKSYNC.functions.withdrawERC20(NGNT_ADDRESS, int(params["amount"]), params["to"]).transact()
-        return tx_hash.hex()
-    return "0x00000000000000000000000000000000000000000000000000000000deadbeef"
+        return f"sync-tx:{tx_hash.hex()[2:]}"
+
+    if params["type"] == "Transfer":
+        sender_balance = balances.get(params["from"])
+        amount = int(params["amount"])
+        if sender_balance is not None:
+            balances[params["from"]] = sender_balance - amount
+            balances[params["to"]] = balances.get(params["to"], 0) + amount
+
+    return "sync-tx:00000000000000000000000000000000000000000000000000000000deadbeef"
 
 
 @dispatcher.add_method
@@ -136,11 +158,16 @@ def ethop_info(*args):
     }
 
 
-@Request.application
-def application(request: Request):
-    response = JSONRPCResponseManager.handle(request.data, dispatcher)
-    return Response(response.json, mimetype='application/json')
+app = Flask(__name__)
+app.add_url_rule('/', 'api', api.as_view(), methods=['POST'])
+
+
+@app.route('/donate/<address>')
+def donate(address):
+    print(f"donate({address})")
+    balances[address] = balances.get(address, 0) + 100_000_000_000_000_000_000  # 100 GNT
+    return '"0x00000000000000000000000000000000000000000000000000000000deadbeef"'
 
 
 if __name__ == '__main__':
-    run_simple('localhost', 3030, application)
+    app.run('localhost', 3030)
