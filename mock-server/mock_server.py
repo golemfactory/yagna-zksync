@@ -1,8 +1,6 @@
 from flask import Flask
 from jsonrpc.backend.flask import api
-from web3.auto import w3
-
-w3.eth.defaultAccount = w3.eth.accounts[0]
+from retrying import retry
 
 ZKSYNC_ADDRESS = "0x94BA4d5Ebb0e05A50e977FFbF6e1a1Ee3D89299c"
 ZKSYNC_MIN_ABI = [
@@ -20,7 +18,6 @@ ZKSYNC_MIN_ABI = [
         "type": "function"
     }
 ]
-ZKSYNC = w3.eth.contract(address=ZKSYNC_ADDRESS, abi=ZKSYNC_MIN_ABI)
 
 NGNT_ADDRESS = "0xFDFEF9D10d929cB3905C71400ce6be1990EA0F34"
 NGNT_MNI_ABI = [
@@ -32,7 +29,19 @@ NGNT_MNI_ABI = [
     "type": "function"
   }
 ]
-NGNT = w3.eth.contract(address=NGNT_ADDRESS, abi=NGNT_MNI_ABI)
+
+
+@retry(wait_fixed=3000, stop_max_attempt_number=10)
+def init_web3():
+    global ZKSYNC, NGNT
+
+    print("Initializing web3...")
+    from web3.auto import w3
+    w3.eth.defaultAccount = w3.eth.accounts[0]
+    ZKSYNC = w3.eth.contract(address=ZKSYNC_ADDRESS, abi=ZKSYNC_MIN_ABI)
+    NGNT = w3.eth.contract(address=NGNT_ADDRESS, abi=NGNT_MNI_ABI)
+    print("Web3 initialized.")
+
 
 dispatcher = api.dispatcher
 
@@ -170,4 +179,5 @@ def donate(address):
 
 
 if __name__ == '__main__':
+    init_web3()
     app.run('localhost', 3030)
