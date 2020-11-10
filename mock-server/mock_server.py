@@ -180,4 +180,4 @@ def donate(address):
 
 if __name__ == '__main__':
     init_web3()
-    app.run('localhost', 3030)
+    app.run('0.0.0.0', 3030)
