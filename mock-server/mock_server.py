@@ -126,16 +126,23 @@ def tx_submit(params, *args):
 
     if params["type"] == "Withdraw":
         tx_hash = ZKSYNC.functions.withdrawERC20(NGNT_ADDRESS, int(params["amount"]), params["to"]).transact()
-        return f"sync-tx:{tx_hash.hex()[2:]}"
+        tx_hash = tx_hash.hex()[2:]
 
-    if params["type"] == "Transfer":
+    elif params["type"] == "Transfer":
         sender_balance = balances.get(params["from"])
         amount = int(params["amount"])
         if sender_balance is not None:
             balances[params["from"]] = sender_balance - amount
             balances[params["to"]] = balances.get(params["to"], 0) + amount
+        # Generate a unique TEST tx_hash
+        tx_hash = f'{params["from"][2:]}{int(params["nonce"]):05x}00000000000deadbeef'
 
-    return "sync-tx:00000000000000000000000000000000000000000000000000000000deadbeef"
+    elif params["type"] == "ChangePubKey":
+        # Generate a unique TEST tx_hash
+        tx_hash = f'{params["account"][2:]}{int(params["nonce"]):05x}00000000000deadbeef'
+
+
+    return f"sync-tx:{tx_hash}"
 
 
 @dispatcher.add_method
