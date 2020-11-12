@@ -46,6 +46,7 @@ def init_web3():
 dispatcher = api.dispatcher
 
 balances = {}
+nonces = {}
 
 
 @dispatcher.add_method
@@ -76,6 +77,7 @@ def account_info(address):
     deposited_balance = NGNT.caller.balanceOf(ZKSYNC_ADDRESS)
     donated_balance = balances.get(address, 0)
     total_balance = str(deposited_balance + donated_balance)
+    current_nonce = nonces.get(address, 0)
     return {
         "address": address,
         "id": 1,
@@ -83,7 +85,7 @@ def account_info(address):
             "balances": {
                 "GNT": total_balance,
             },
-            "nonce": 0,
+            "nonce": current_nonce,
             "pubKeyHash": "sync:0000000000000000000000000000000000000000"
         },
         "depositing": {
@@ -93,7 +95,7 @@ def account_info(address):
             "balances": {
                 "GNT": total_balance,
             },
-            "nonce": 0,
+            "nonce": current_nonce,
             "pubKeyHash": "sync:0000000000000000000000000000000000000000"
         }
     }
@@ -124,6 +126,8 @@ def get_tx_fee(tx_type, *args):
 def tx_submit(params, *args):
     print(f"tx_submit{(params,) + args}")
 
+    address = None
+
     if params["type"] == "Withdraw":
         tx_hash = ZKSYNC.functions.withdrawERC20(NGNT_ADDRESS, int(params["amount"]), params["to"]).transact()
         tx_hash = tx_hash.hex()[2:]
@@ -134,13 +138,15 @@ def tx_submit(params, *args):
         if sender_balance is not None:
             balances[params["from"]] = sender_balance - amount
             balances[params["to"]] = balances.get(params["to"], 0) + amount
-        # Generate a unique TEST tx_hash
-        tx_hash = f'{params["from"][2:]}{int(params["nonce"]):05x}00000000000deadbeef'
+        address = params["from"]
 
     elif params["type"] == "ChangePubKey":
-        # Generate a unique TEST tx_hash
-        tx_hash = f'{params["account"][2:]}{int(params["nonce"]):05x}00000000000deadbeef'
+        address = params["account"]
 
+    if address:
+        # Generate a unique TEST tx_hash
+        tx_hash = f'{address[2:]}{int(params["nonce"]):05x}00000000000deadbeef'
+        nonces[address] = nonces.get(address, 0) + 1
 
     return f"sync-tx:{tx_hash}"
 
