@@ -187,7 +187,7 @@ app.add_url_rule('/', 'api', api.as_view(), methods=['POST'])
 @app.route('/donate/<address>')
 def donate(address):
     print(f"donate({address})")
-    balances[address] = balances.get(address, 0) + 100_000_000_000_000_000_000  # 100 GNT
+    balances[address] = balances.get(address, 0) + 1000_000_000_000_000_000_000  # 1000 GNT
     return '"0x00000000000000000000000000000000000000000000000000000000deadbeef"'
 
 
