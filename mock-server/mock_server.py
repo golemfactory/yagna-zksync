@@ -105,13 +105,6 @@ def account_info(address):
 def get_tx_fee(tx_type, *args):
     print(f"get_tx_fee{(tx_type,) + args}")
 
-    # An ugly workaround for a bug zkSync client
-    try:
-        tx_type["ChangePubKey"]["onchain_pubkey_auth"] = tx_type["ChangePubKey"]["onchainPubkeyAuth"]
-    except (TypeError, KeyError):
-        pass
-    # End of workaround
-
     return {
         "feeType": tx_type,
         "gasTxAmount": "0",
