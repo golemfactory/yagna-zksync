@@ -67,6 +67,12 @@ def tokens():
             "id": 16,
             "symbol": "GNT",
             "decimals": 18
+        },
+        "tGLM": {
+            "address": NGNT_ADDRESS,
+            "id": 16,
+            "symbol": "tGLM",
+            "decimals": 18
         }
     }
 
