@@ -1,3 +1,5 @@
+import logging
+
 from flask import Flask
 from jsonrpc.backend.flask import api
 from retrying import retry
@@ -30,17 +32,20 @@ NGNT_MNI_ABI = [
   }
 ]
 
+app = Flask(__name__)
+app.logger.setLevel(logging.INFO)
+
 
 @retry(wait_fixed=3000, stop_max_attempt_number=10)
 def init_web3():
     global ZKSYNC, NGNT
 
-    print("Initializing web3...")
+    app.logger.info("Initializing web3...")
     from web3.auto import w3
     w3.eth.defaultAccount = w3.eth.accounts[0]
     ZKSYNC = w3.eth.contract(address=ZKSYNC_ADDRESS, abi=ZKSYNC_MIN_ABI)
     NGNT = w3.eth.contract(address=NGNT_ADDRESS, abi=NGNT_MNI_ABI)
-    print("Web3 initialized.")
+    app.logger.info("Web3 initialized.")
 
 
 dispatcher = api.dispatcher
@@ -51,7 +56,7 @@ nonces = {}
 
 @dispatcher.add_method
 def contract_address():
-    print("contract_address()")
+    app.logger.info("contract_address()")
     return {
         "mainContract": ZKSYNC_ADDRESS,
         "govContract": ""
@@ -60,7 +65,7 @@ def contract_address():
 
 @dispatcher.add_method
 def tokens():
-    print("tokens()")
+    app.logger.info("tokens()")
     return {
         "GNT": {
             "address": NGNT_ADDRESS,
@@ -79,7 +84,7 @@ def tokens():
 
 @dispatcher.add_method
 def account_info(address):
-    print(f"account_info({address})")
+    app.logger.info(f"account_info({address})")
     deposited_balance = NGNT.caller.balanceOf(ZKSYNC_ADDRESS)
     donated_balance = balances.get(address, 0)
     total_balance = str(deposited_balance + donated_balance)
@@ -109,7 +114,7 @@ def account_info(address):
 
 @dispatcher.add_method
 def get_tx_fee(tx_type, *args):
-    print(f"get_tx_fee{(tx_type,) + args}")
+    app.logger.info(f"get_tx_fee{(tx_type,) + args}")
 
     return {
         "feeType": tx_type,
@@ -123,7 +128,7 @@ def get_tx_fee(tx_type, *args):
 
 @dispatcher.add_method
 def tx_submit(params, *args):
-    print(f"tx_submit{(params,) + args}")
+    app.logger.info(f"tx_submit{(params,) + args}")
 
     address = None
 
@@ -152,7 +157,7 @@ def tx_submit(params, *args):
 
 @dispatcher.add_method
 def tx_info(tx_hash):
-    print(f"tx_info({tx_hash})")
+    app.logger.info(f"tx_info({tx_hash})")
     return {
         "executed": True,
         "success": True,
@@ -166,7 +171,7 @@ def tx_info(tx_hash):
 
 @dispatcher.add_method
 def ethop_info(*args):
-    print(f"ethop_info{args}")
+    app.logger.info(f"ethop_info{args}")
     return {
         "executed": True,
         "success": True,
@@ -179,13 +184,12 @@ def ethop_info(*args):
     }
 
 
-app = Flask(__name__)
 app.add_url_rule('/', 'api', api.as_view(), methods=['POST'])
 
 
 @app.route('/donate/<address>')
 def donate(address):
-    print(f"donate({address})")
+    app.logger.info(f"donate({address})")
     balances[address] = balances.get(address, 0) + 1000_000_000_000_000_000_000  # 1000 GNT
     return '"0x00000000000000000000000000000000000000000000000000000000deadbeef"'
 
