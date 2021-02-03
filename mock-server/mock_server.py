@@ -3,6 +3,7 @@ import logging
 from flask import Flask
 from jsonrpc.backend.flask import api
 from retrying import retry
+from datetime import datetime
 
 ZKSYNC_ADDRESS = "0x94BA4d5Ebb0e05A50e977FFbF6e1a1Ee3D89299c"
 ZKSYNC_MIN_ABI = [
@@ -52,6 +53,7 @@ dispatcher = api.dispatcher
 
 balances = {}
 nonces = {}
+transactions = {}
 
 
 @dispatcher.add_method
@@ -143,13 +145,21 @@ def tx_submit(params, *args):
             balances[params["from"]] = sender_balance - amount
             balances[params["to"]] = balances.get(params["to"], 0) + amount
         address = params["from"]
+        # Generate a unique TEST tx_hash
+        tx_hash = f'{address[2:]}{int(params["nonce"]):05x}00000000000deadbeef'
+        transactions[tx_hash] = {
+            'to': params["to"],
+            'from': address,
+            'amount': params["amount"],
+            'created_at': datetime.now()
+        }
 
     elif params["type"] == "ChangePubKey":
         address = params["account"]
-
-    if address:
         # Generate a unique TEST tx_hash
         tx_hash = f'{address[2:]}{int(params["nonce"]):05x}00000000000deadbeef'
+
+    if address:
         nonces[address] = nonces.get(address, 0) + 1
 
     return f"sync-tx:{tx_hash}"
@@ -192,6 +202,13 @@ def donate(address):
     app.logger.info(f"donate({address})")
     balances[address] = balances.get(address, 0) + 1000_000_000_000_000_000_000  # 1000 GNT
     return '"0x00000000000000000000000000000000000000000000000000000000deadbeef"'
+
+@app.route('/api/v0.1/transactions_all/<tx_hash>')
+def transactions_all(tx_hash):
+    print(f"transactions_all({tx_hash})")
+    return transactions.get(tx_hash, {})
+
+
 
 
 if __name__ == '__main__':
