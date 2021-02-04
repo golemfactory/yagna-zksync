@@ -203,7 +203,7 @@ def donate(address):
     balances[address] = balances.get(address, 0) + 1000_000_000_000_000_000_000  # 1000 GNT
     return '"0x00000000000000000000000000000000000000000000000000000000deadbeef"'
 
-@app.route('/api/v0.1/transactions_all/<tx_hash>')
+@app.route('/transactions_all/<tx_hash>')
 def transactions_all(tx_hash):
     print(f"transactions_all({tx_hash})")
     return transactions.get(tx_hash, {})
