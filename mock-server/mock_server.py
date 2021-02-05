@@ -151,7 +151,7 @@ def tx_submit(params, *args):
             'to': params["to"],
             'from': address,
             'amount': params["amount"],
-            'created_at': datetime.now()
+            'created_at': datetime.now().isoformat("T")
         }
 
     elif params["type"] == "ChangePubKey":
@@ -203,12 +203,11 @@ def donate(address):
     balances[address] = balances.get(address, 0) + 1000_000_000_000_000_000_000  # 1000 GNT
     return '"0x00000000000000000000000000000000000000000000000000000000deadbeef"'
 
+
 @app.route('/transactions_all/<tx_hash>')
 def transactions_all(tx_hash):
     print(f"transactions_all({tx_hash})")
     return transactions.get(tx_hash, {})
-
-
 
 
 if __name__ == '__main__':
