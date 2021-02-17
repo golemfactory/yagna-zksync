@@ -66,7 +66,7 @@ yarn exodus
   - [x] transfer
   - [x] withdraw
   - [ ] return funds (OPT)
-- [x] adjust scenario to include NGNT
+- [x] adjust scenario to include tGLM
 - [x] make readme better
 - [x] add exodus script, ~~move shared logic to `src/lib.js`.~~
 
