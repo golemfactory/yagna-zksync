@@ -80,6 +80,12 @@ def tokens():
             "id": 16,
             "symbol": "tGLM",
             "decimals": 18
+        },
+        "GLM": {
+            "address": GLM_ADDRESS,
+            "id": 16,
+            "symbol": "GLM",
+            "decimals": 18
         }
     }
 
@@ -98,6 +104,7 @@ def account_info(address):
             "balances": {
                 "GNT": total_balance,
                 "tGLM": total_balance,
+                "GLM": total_balance,
             },
             "nonce": current_nonce,
             "pubKeyHash": "sync:0000000000000000000000000000000000000000"
@@ -109,6 +116,7 @@ def account_info(address):
             "balances": {
                 "GNT": total_balance,
                 "tGLM": total_balance,
+                "GLM": total_balance,
             },
             "nonce": current_nonce,
             "pubKeyHash": "sync:0000000000000000000000000000000000000000"
