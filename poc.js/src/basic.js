@@ -16,13 +16,13 @@ const logger = createLogger({
   transports: [new transports.Console()],
 });
 
-const WEB3_URL = process.env.WEB3_URL || "http://1.geth.testnet.golem.network:55555";
+const WEB3_URL = process.env.WEB3_URL || "http://geth.testnet.golem.network:55555";
 const ZKSYNC_PROVIDER_URL = process.env.ZKSYNC_PROVIDER_URL || "https://rinkeby-api.zksync.io/jsrpc";
 const ETH_FAUCET_ADDRESS = process.env.ETH_FAUCET_ADDRESS || "http://faucet.testnet.golem.network:4000/donate";
-const GNT_CONTRACT_ADDRESS = process.env.GNT_CONTRACT_ADDRESS || "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
+const GLM_CONTRACT_ADDRESS = process.env.GLM_CONTRACT_ADDRESS || "0xd94e3DC39d4Cad1DAd634e7eb585A57A19dC7EFE";
 const FAUCET_CONTRACT_ADDRESS = process.env.FAUCET_CONTRACT_ADDRESS || "0x59259943616265A03d775145a2eC371732E2B06C";
 const CHAIN_ID = parseInt(process.env.CHAIN_ID) || 4;  // Default fo rinkeby
-const GNT_ZKSYNC_ID = 16;
+const GLM_ZKSYNC_ID = 16;
 const FAUCET_MIN_ABI = [
   {
     "constant": false,
@@ -36,7 +36,7 @@ const FAUCET_MIN_ABI = [
 ];
 
 // The minimum ABI to get ERC20 Token balance
-const GNT_MIN_ABI = [
+const GLM_MIN_ABI = [
   // balanceOf
   {
     "constant": true,
@@ -141,11 +141,12 @@ function web3ParseEther(number_string) {
   return new BN(ethers.utils.parseEther(number_string).toString());
 }
 
-const MIN_GNT_BALANCE = 10;
+const MIN_GLM_BALANCE = 10;
 const MIN_ETH_BALANCE = Web3.utils.fromWei("1000000000000000", 'ether');
+const GLM_TOKEN_NAME = 'tGLM'
 
 let web3 = null;
-let gnt_contract = null;
+let glm_contract = null;
 let faucet_contract = null;
 let zksync_contract_address = null;
 let zksync_contract = null;
@@ -176,8 +177,8 @@ async function main() {
   try {
     logger.info("Initializing web3...");
     web3 = new Web3(new Web3.providers.HttpProvider(WEB3_URL));
-    // Creates GNT contracts
-    gnt_contract = new web3.eth.Contract(GNT_MIN_ABI, GNT_CONTRACT_ADDRESS);
+    // Creates GLM contracts
+    glm_contract = new web3.eth.Contract(GLM_MIN_ABI, GLM_CONTRACT_ADDRESS);
     faucet_contract = new web3.eth.Contract(FAUCET_MIN_ABI, FAUCET_CONTRACT_ADDRESS);
     logger.info("web3 initialized!");
 
@@ -240,14 +241,14 @@ async function main() {
 
     await increaseAllowance(requestorWallet);
 
-    logger.info("Before Requestor's funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
-    logger.info("Before Provider's funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
+    logger.info("Before Requestor's funds: " + await get_glm_balance(requestorWallet.address) + " " + GLM_TOKEN_NAME);
+    logger.info("Before Provider's funds: " + await get_glm_balance(providerWallet.address) + " " + GLM_TOKEN_NAME);
 
     logger.info("Depositing Requestor's funds on zkSync...")
     // Deposit assets on requestor
     const deposit = await requestorSyncWallet.depositToSyncFromEthereum({
       depositTo: requestorSyncWallet.address(),
-      token: "GNT",
+      token: "tGLM",
       amount: ethers.utils.parseEther("10.0"),
     });
     logger.info("Done!");
@@ -260,8 +261,8 @@ async function main() {
 
     logger.info("Requestor's funds deposited on zkSync network");
 
-    logger.info("After deposit requestor funds: " + await get_gnt_balance(requestorWallet.address) + " GNT");
-    logger.info("After provider funds: " + await get_gnt_balance(providerWallet.address) + " GNT");
+    logger.info("After deposit requestor funds: " + await get_glm_balance(requestorWallet.address) + " " + GLM_TOKEN_NAME);
+    logger.info("After provider funds: " + await get_glm_balance(providerWallet.address) + " " + GLM_TOKEN_NAME);
 
     // Unlock Requestor's account
     logger.info("Unlocking Requestor's account on zkSync...")
@@ -274,10 +275,10 @@ async function main() {
         ChangePubKey: {
             onchainPubkeyAuth: false,
         },
-      }, requestorWallet.address, "GNT")).totalFee;
-      logger.info("Unlock fee: " + fromWei(requestorUnlockFee) + " GNT");
+      }, requestorWallet.address, GLM_TOKEN_NAME)).totalFee;
+      logger.info("Unlock fee: " + fromWei(requestorUnlockFee) + " " + GLM_TOKEN_NAME);
       const changeRequestorPubkey = await requestorSyncWallet.setSigningKey({
-        feeToken: "GNT",
+        feeToken: GLM_TOKEN_NAME,
         fee: zksync.utils.closestPackableTransactionFee(requestorUnlockFee),
         onchainAuth: false
       });
@@ -287,16 +288,16 @@ async function main() {
     }
     logger.info("Requestor's account unlocked");
 
-    logger.info("Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT")) + " GNT");
-    logger.info("Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT", "verified")) + " GNT");
+    logger.info("Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance(GLM_TOKEN_NAME)) + " " + GLM_TOKEN_NAME);
+    logger.info("Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance(GLM_TOKEN_NAME, "verified")) + " " + GLM_TOKEN_NAME);
 
-    logger.info("Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT")) + " GNT");
-    logger.info("Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT", "verified")) + " GNT");
+    logger.info("Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance(GLM_TOKEN_NAME)) + " " + GLM_TOKEN_NAME);
+    logger.info("Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance(GLM_TOKEN_NAME, "verified")) + " " + GLM_TOKEN_NAME);
 
     logger.info("Making a simple transfer...");
     const transfer = await requestorSyncWallet.syncTransfer({
       to: providerSyncWallet.address(),
-      token: "GNT",
+      token: GLM_TOKEN_NAME,
       amount: zksync.utils.closestPackableTransactionAmount(
         ethers.utils.parseEther("6.0")),
     });
@@ -306,11 +307,11 @@ async function main() {
     const transferReceipt = await transfer.awaitReceipt();
     logger.info("Confirmed!");
 
-    logger.info("(After transfer) Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT")) + " GNT");
-    logger.info("(After transfer) Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT", "verified")) + " GNT");
+    logger.info("(After transfer) Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance(GLM_TOKEN_NAME)) + " " + GLM_TOKEN_NAME);
+    logger.info("(After transfer) Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance(GLM_TOKEN_NAME, "verified")) + " " + GLM_TOKEN_NAME);
 
-    logger.info("(After transfer) Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT")) + " GNT");
-    logger.info("(After transfer) Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT", "verified")) + " GNT");
+    logger.info("(After transfer) Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance(GLM_TOKEN_NAME)) + " " + GLM_TOKEN_NAME);
+    logger.info("(After transfer) Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance(GLM_TOKEN_NAME, "verified")) + " " + GLM_TOKEN_NAME);
 
     // Unlock Provider's account
     logger.info("Unlocking Provider's account on zkSync...")
@@ -323,10 +324,10 @@ async function main() {
         ChangePubKey: {
             onchainPubkeyAuth: false,
         },
-      }, providerWallet.address, "GNT")).totalFee;
-      logger.info("Unlock fee: " + fromWei(providerUnlockFee) + " GNT");
+      }, providerWallet.address, GLM_TOKEN_NAME)).totalFee;
+      logger.info("Unlock fee: " + fromWei(providerUnlockFee) + " " + GLM_TOKEN_NAME);
       const changeProviderPubkey = await providerSyncWallet.setSigningKey({
-        feeToken: "GNT",
+        feeToken: GLM_TOKEN_NAME,
         fee: zksync.utils. closestPackableTransactionFee(providerUnlockFee),
         onchainAuth: false
       });
@@ -339,7 +340,7 @@ async function main() {
     if (exodus) {
       logger.info("Starting emergency withdrawal...");
       const emergencyWithdraw = await providerSyncWallet.emergencyWithdraw({
-        token: "GNT",
+        token: GLM_TOKEN_NAME,
       });
       logger.info("Done.");
 
@@ -347,10 +348,10 @@ async function main() {
       await emergencyWithdraw.awaitVerifyReceipt();
       logger.info("Done.");
 
-      const balanceToWithdraw = await zksync_contract.methods.getBalanceToWithdraw(providerWallet.address, GNT_ZKSYNC_ID).call();
-      logger.info("Balance to withdraw: " + fromWei(balanceToWithdraw) + " GNT");
+      const balanceToWithdraw = await zksync_contract.methods.getBalanceToWithdraw(providerWallet.address, GLM_ZKSYNC_ID).call();
+      logger.info("Balance to withdraw: " + fromWei(balanceToWithdraw) + " " + GLM_TOKEN_NAME);
 
-      const withdrawalCallData = zksync_contract.methods.withdrawERC20(GNT_CONTRACT_ADDRESS, balanceToWithdraw).encodeABI();
+      const withdrawalCallData = zksync_contract.methods.withdrawERC20(GLM_CONTRACT_ADDRESS, balanceToWithdraw).encodeABI();
       logger.info("Withdrawing to Ethereum chain...");
       const withdrawalTx = await providerWallet.sendTransaction({
         to: zksync_contract_address,
@@ -364,19 +365,19 @@ async function main() {
       logger.info("Done.");
 
     } else {
-      const totalBalance = await providerSyncWallet.getBalance("GNT");
-      logger.info("Total balance: " + fromWei(totalBalance) + " GNT");
+      const totalBalance = await providerSyncWallet.getBalance(GLM_TOKEN_NAME);
+      logger.info("Total balance: " + fromWei(totalBalance) + " " + GLM_TOKEN_NAME);
 
-      const withdrawFee = (await syncProvider.getTransactionFee("Withdraw", providerWallet.address, "GNT")).totalFee;
-      logger.info("Withdraw fee: " + fromWei(withdrawFee) + " GNT");
+      const withdrawFee = (await syncProvider.getTransactionFee("Withdraw", providerWallet.address, GLM_TOKEN_NAME)).totalFee;
+      logger.info("Withdraw fee: " + fromWei(withdrawFee) + " " + GLM_TOKEN_NAME);
 
       const withdrawAmount = fromWei(totalBalance - withdrawFee);
-      logger.info("Withdraw amount: " + withdrawAmount + " GNT");
+      logger.info("Withdraw amount: " + withdrawAmount + " " + GLM_TOKEN_NAME);
 
       logger.info("Withdrawing Provider's funds...");
       const withdraw = await providerSyncWallet.withdrawFromSyncToEthereum({
         ethAddress: providerWallet.address,
-        token: "GNT",
+        token: GLM_TOKEN_NAME,
         amount: ethers.utils.parseEther(withdrawAmount),
       });
       logger.info("Done!");
@@ -386,13 +387,13 @@ async function main() {
       logger.info("Done!");
 
     }
-    logger.info("(After withdrawal) Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT")) + " GNT");
-    logger.info("(After withdrawal) Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance("GNT", "verified")) + " GNT");
+    logger.info("(After withdrawal) Commited Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance(GLM_TOKEN_NAME)) + " " + GLM_TOKEN_NAME);
+    logger.info("(After withdrawal) Verified Requestor's funds on zkSync: " + fromWei(await requestorSyncWallet.getBalance(GLM_TOKEN_NAME, "verified")) + " " + GLM_TOKEN_NAME);
 
-    logger.info("(After withdrawal) Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT")) + " GNT");
-    logger.info("(After withdrawal) Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance("GNT", "verified")) + " GNT");
+    logger.info("(After withdrawal) Commited Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance(GLM_TOKEN_NAME)) + " " + GLM_TOKEN_NAME);
+    logger.info("(After withdrawal) Verified Provider's funds on zkSync: " + fromWei(await providerSyncWallet.getBalance(GLM_TOKEN_NAME, "verified")) + " " + GLM_TOKEN_NAME);
 
-    logger.info("(After withdrawal) Provider's funds on ethereum: " + (await get_gnt_balance(providerWallet.address)) + " GNT");
+    logger.info("(After withdrawal) Provider's funds on ethereum: " + (await get_glm_balance(providerWallet.address)) + " " + GLM_TOKEN_NAME);
 
     logger.info("Scenario completed, have a nice day!");
   } catch (e) {
@@ -408,8 +409,8 @@ async function get_eth_balance(address) {
   return fromWei(await web3.eth.getBalance(address));
 }
 
-async function get_gnt_balance(address) {
-  return fromWei(await gnt_contract.methods.balanceOf(address).call());
+async function get_glm_balance(address) {
+  return fromWei(await glm_contract.methods.balanceOf(address).call());
 }
 
 function fromWei(amount) {
@@ -418,7 +419,7 @@ function fromWei(amount) {
 
 async function request_funds(wallet) {
   await request_eth(wallet);
-  await request_gnt(wallet);
+  await request_glm(wallet);
 }
 
 async function request_eth(wallet) {
@@ -453,10 +454,10 @@ async function request_eth(wallet) {
   logger.info("ETH requested!");
 }
 
-async function request_gnt(wallet) {
-  const gnt_balance = await get_gnt_balance(wallet.address);
-  if (gnt_balance < MIN_GNT_BALANCE) {
-    logger.info("Requesting GNT for: " + wallet.address);
+async function request_glm(wallet) {
+  const glm_balance = await get_glm_balance(wallet.address);
+  if (glm_balance < MIN_GLM_BALANCE) {
+    logger.info("Requesting tGLM for: " + wallet.address);
     const eth_balance = await get_eth_balance(wallet.address);
     if (eth_balance < MIN_ETH_BALANCE) {
       throw new Error("Insuficient gas for the Faucet!");
@@ -468,6 +469,7 @@ async function request_gnt(wallet) {
       value: '0x00',
       data: callData,
       chainId: CHAIN_ID,
+      gasLimit: 90_000,
     };
     let faucetTx = await wallet.sendTransaction(transactionParameters);
     logger.info("Waiting for confirmations...");
@@ -478,9 +480,9 @@ async function request_gnt(wallet) {
 
 async function increaseAllowance(wallet) {
   logger.info("Sending increaseAllowance...");
-  const callData = gnt_contract.methods.increaseAllowance(zksync_contract_address, web3ParseEther("100.0")).encodeABI();
+  const callData = glm_contract.methods.increaseAllowance(zksync_contract_address, web3ParseEther("100.0")).encodeABI();
   const transactionParameters = {
-    to: GNT_CONTRACT_ADDRESS,
+    to: GLM_CONTRACT_ADDRESS,
     value: '0x00',
     data: callData,
     chainId: CHAIN_ID,
