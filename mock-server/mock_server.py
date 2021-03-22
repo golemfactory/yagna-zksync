@@ -69,12 +69,6 @@ def contract_address():
 def tokens():
     app.logger.info("tokens()")
     return {
-        "GNT": {
-            "address": GLM_ADDRESS,
-            "id": 16,
-            "symbol": "GNT",
-            "decimals": 18
-        },
         "tGLM": {
             "address": GLM_ADDRESS,
             "id": 16,
@@ -102,7 +96,6 @@ def account_info(address):
         "id": 1,
         "committed": {
             "balances": {
-                "GNT": total_balance,
                 "tGLM": total_balance,
                 "GLM": total_balance,
             },
@@ -114,7 +107,6 @@ def account_info(address):
         },
         "verified": {
             "balances": {
-                "GNT": total_balance,
                 "tGLM": total_balance,
                 "GLM": total_balance,
             },
