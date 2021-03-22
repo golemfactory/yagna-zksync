@@ -207,7 +207,7 @@ def ethop_info(*args):
 app.add_url_rule('/', 'api', api.as_view(), methods=['POST'])
 
 
-@app.route('/donate/<address>')
+@app.route('/zk/donatex/<address>')
 def donate(address):
     app.logger.info(f"donate({address})")
     balances[address] = balances.get(address, 0) + 1000_000_000_000_000_000_000  # 1000 GLM
