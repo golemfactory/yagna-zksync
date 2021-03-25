@@ -69,12 +69,6 @@ def contract_address():
 def tokens():
     app.logger.info("tokens()")
     return {
-        "GNT": {
-            "address": GLM_ADDRESS,
-            "id": 16,
-            "symbol": "GNT",
-            "decimals": 18
-        },
         "tGLM": {
             "address": GLM_ADDRESS,
             "id": 16,
@@ -102,7 +96,6 @@ def account_info(address):
         "id": 1,
         "committed": {
             "balances": {
-                "GNT": total_balance,
                 "tGLM": total_balance,
                 "GLM": total_balance,
             },
@@ -114,7 +107,6 @@ def account_info(address):
         },
         "verified": {
             "balances": {
-                "GNT": total_balance,
                 "tGLM": total_balance,
                 "GLM": total_balance,
             },
@@ -207,7 +199,7 @@ def ethop_info(*args):
 app.add_url_rule('/', 'api', api.as_view(), methods=['POST'])
 
 
-@app.route('/donate/<address>')
+@app.route('/zk/donatex/<address>')
 def donate(address):
     app.logger.info(f"donate({address})")
     balances[address] = balances.get(address, 0) + 1000_000_000_000_000_000_000  # 1000 GLM
