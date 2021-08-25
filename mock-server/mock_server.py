@@ -99,6 +99,8 @@ def account_info(address):
                 "tGLM": total_balance,
                 "GLM": total_balance,
             },
+            "nfts": {},
+            "mintedNfts": {},
             "nonce": current_nonce,
             "pubKeyHash": "sync:0000000000000000000000000000000000000000"
         },
@@ -110,6 +112,8 @@ def account_info(address):
                 "tGLM": total_balance,
                 "GLM": total_balance,
             },
+            "nfts": {},
+            "mintedNfts": {},
             "nonce": current_nonce,
             "pubKeyHash": "sync:0000000000000000000000000000000000000000"
         }
