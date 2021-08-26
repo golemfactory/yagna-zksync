@@ -73,13 +73,15 @@ def tokens():
             "address": GLM_ADDRESS,
             "id": 16,
             "symbol": "tGLM",
-            "decimals": 18
+            "decimals": 18,
+            "is_nft": False,
         },
         "GLM": {
             "address": GLM_ADDRESS,
             "id": 16,
             "symbol": "GLM",
-            "decimals": 18
+            "decimals": 18,
+            "is_nft": False,
         }
     }
 
